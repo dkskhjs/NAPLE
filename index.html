@@ -617,13 +617,34 @@ function bgmInit(){
   setInterval(bgmTick,25);
   if(BGM.want){const w=BGM.want;BGM.want=null;bgmPlay(w);}
 }
+// recorded tracks (assets/bgm/) win over the chiptune; scenes without one fall back to the sequencer
+const BGM_FILES={title:'the_map_unfolds',town:'path_to_the_great_oak',field:'first_light_in_the_valley',forest:'lanterns_in_the_canopy',ruins:'under_permafrost',boss:'halls_of_permafrost'};
+const MUSIC_VOL=.5;
+const tracks={};
+function trackEl(name){
+  if(!tracks[name]){const el=new Audio(`assets/bgm/${BGM_FILES[name]}.mp3`);el.loop=true;el.preload='auto';el.volume=0;tracks[name]={el,vol:0,target:0};}
+  return tracks[name];
+}
+// volume fades for <audio> tracks (media elements stay outside the AudioContext so file:// and artifact hosting both work)
+setInterval(()=>{
+  for(const k in tracks){const tr=tracks[k];
+    if(tr.vol!==tr.target){tr.vol=tr.vol<tr.target?Math.min(tr.target,tr.vol+.04):Math.max(tr.target,tr.vol-.04);try{tr.el.volume=tr.vol;}catch(e){}}
+    if(tr.vol<=0&&tr.target<=0&&!tr.el.paused)tr.el.pause();}
+},50);
+const musicLevel=()=>BGM.on&&!muted?MUSIC_VOL:0;
 function bgmPlay(name){
   if(!AC||!BGM.bus){BGM.want=name;return;}
   if(BGM.name===name)return;
-  const t=AC.currentTime;
-  if(BGM.g){const old=BGM.g;old.gain.setTargetAtTime(0,t,.4);setTimeout(()=>old.disconnect(),2500);}
+  const t=AC.currentTime;BGM.name=name;
+  for(const k in tracks)tracks[k].target=0;
+  if(BGM.g){const old=BGM.g;old.gain.setTargetAtTime(0,t,.4);setTimeout(()=>old.disconnect(),2500);BGM.g=null;BGM.song=null;}
+  if(BGM_FILES[name]){const tr=trackEl(name);tr.target=musicLevel();const pr=tr.el.play();if(pr&&pr.catch)pr.catch(()=>{});return;}
   BGM.g=AC.createGain();BGM.g.gain.setValueAtTime(0,t);BGM.g.gain.linearRampToValueAtTime(1,t+1.2);BGM.g.connect(BGM.bus);
-  BGM.name=name;BGM.song=buildSong(SONGS[name]);BGM.step=0;BGM.next=t+.1;
+  BGM.song=buildSong(SONGS[name]);BGM.step=0;BGM.next=t+.1;
+}
+function refreshMusicVol(){
+  if(BGM.bus)BGM.bus.gain.setTargetAtTime(BGM.on?.5:0,AC.currentTime,.1);
+  const tr=tracks[BGM.name];if(tr){tr.target=musicLevel();if(tr.target>0&&tr.el.paused){const pr=tr.el.play();if(pr&&pr.catch)pr.catch(()=>{});}}
 }
 function tone(type,f,t,dur,vol,out){
   const o=AC.createOscillator(),gn=AC.createGain();o.type=type;o.frequency.value=f;
@@ -649,8 +670,8 @@ function bgmTick(){
     BGM.next+=sd;BGM.step=(BGM.step+1)%S2.steps;
   }
 }
-function setMusic(v){BGM.on=v;try{localStorage.setItem('naple-music',v?'1':'0')}catch(e){}if(BGM.bus)BGM.bus.gain.setTargetAtTime(v?.5:0,AC.currentTime,.1);}
-function setMuted(v){muted=v;if(MASTER)MASTER.gain.setTargetAtTime(v?0:1,AC.currentTime,.05);}
+function setMusic(v){BGM.on=v;try{localStorage.setItem('naple-music',v?'1':'0')}catch(e){}refreshMusicVol();}
+function setMuted(v){muted=v;if(MASTER)MASTER.gain.setTargetAtTime(v?0:1,AC.currentTime,.05);refreshMusicVol();}
 
 // ---------- input
 const keys={},vkeys={},prevAct={};

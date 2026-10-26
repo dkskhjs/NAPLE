@@ -71,7 +71,17 @@
 ## 소리
 
 - **효과음**: [Kenney](https://www.kenney.nl)의 Digital Audio, Impact Sounds, RPG Audio, Interface Sounds, Music Jingles(모두 CC0)에서 34개를 골라 MP3(모노 48kbps)로 변환해 `index.html`에 넣었습니다. 원본 변환 파일은 `assets/sfx/`에 있습니다. 원소마다 시전음이 다르고, 레벨업·전직·보스 격파에는 NES 징글이 나옵니다.
-- **BGM**: 외부 파일 없이 WebAudio로 연주하는 칩튠입니다. 맵마다 조성·코드 진행·빠르기가 다르고, 멜로디는 맵별 고정 시드로 만들어 8마디를 반복합니다. 맵을 옮기면 크로스페이드로 바뀝니다.
+- **BGM**: `assets/bgm/`의 곡을 장면마다 재생합니다 (96kbps, 음량 -16 LUFS로 맞춤). 장면을 옮기면 페이드로 바뀌고, 다시 오면 이어서 재생합니다.
+  | 장면 | 곡 |
+  | --- | --- |
+  | 타이틀 | the_map_unfolds |
+  | 리프 마을 | path_to_the_great_oak |
+  | 초록 들판 | first_light_in_the_valley |
+  | 깊은 숲 | lanterns_in_the_canopy |
+  | 얼음 유적 | under_permafrost |
+  | 강철 게의 둥지 | halls_of_permafrost |
+
+  곡이 없는 장면(노을 사막)은 WebAudio 칩튠 시퀀서로 연주합니다. 곡 파일은 `index.html` 옆의 `assets/bgm/`에서 읽으므로 폴더째 두어야 합니다.
 
 ## 그래픽 출처
 
