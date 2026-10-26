@@ -59,4 +59,7 @@
 
 지형·배경·몬스터·동전 스프라이트는 [Kenney](https://www.kenney.nl)의 **Pixel Platformer**(CC0)를 사용합니다.
 원본 타일시트와 라이선스는 `assets/kenney/`에 있고, `index.html`에는 같은 이미지를 data URI로 넣어 파일 하나로 실행되게 했습니다.
-플레이어와 NPC 마법사는 코드로 그립니다.
+플레이어와 NPC 마법사는 `assets/wizard/`의 스프라이트를 씁니다.
+- `source.webp`: 받은 원본 시트 (체크무늬 배경이 그려진 이미지)
+- `wizard_sheet_clean.png`: 원본을 도트 격자(8.33px = 1도트)로 다시 샘플링하고 배경을 뺀 240×123 시트. 맨몸, 모자·로브·후드 레이어, 지팡이, 아이템 포함
+- `player_sheet.png`: 게임에서 쓰는 32×32 프레임 9장 (대기 2, 걷기 4, 시전 3). NPC는 같은 프레임의 로브 색만 바꿔 씁니다.
