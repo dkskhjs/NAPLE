@@ -116,6 +116,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
         <kbd>마우스 클릭</kbd><span>마우스 방향으로 시전</span>
         <kbd>1 2 3 4</kbd><span>지팡이 교체</span>
         <kbd>I / K / Tab</kbd><span>마법서: 카드를 지팡이 슬롯에 배치</span>
+        <kbd>C</kbd><span>캐릭터: 능력치(AP) 분배, 장비</span>
         <kbd>Q / E</kbd><span>빨간 포션 / 파란 포션</span>
         <kbd>M</kbd><span>소리 켜기/끄기</span>
         <kbd>P</kbd><span>화면 효과 바꾸기 (도트 + 팔레트 / 도트 / 원본)</span>
@@ -144,6 +145,13 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
   </div>
 </div>
 
+<div id="char" class="ov" hidden>
+  <div class="win">
+    <div class="win-h"><span>캐릭터</span><button class="btn ghost small" data-close>닫기 (Esc)</button></div>
+    <div class="win-b" id="char-body"></div>
+  </div>
+</div>
+
 <div id="dead" class="ov" hidden>
   <div class="win" style="max-width:420px">
     <div class="win-h"><span>쓰러졌습니다</span></div>
@@ -160,7 +168,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
     <button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button>
   </div>
   <div class="acts">
-    <button data-k="swap">교체</button><button data-k="book">마법서</button><span></span>
+    <button data-k="swap">교체</button><button data-k="book">마법서</button><button data-k="char">캐릭</button>
     <button data-k="potion">포션</button><button data-k="jump">점프</button><button data-k="cast">시전</button>
   </div>
 </div>
@@ -354,7 +362,8 @@ const player={x:200,y:GROUND,vx:0,vy:0,dir:1,onGround:true,plat:null,climb:null,
 function freshSave(){
   return {lv:1,exp:0,meso:120,hp:60,mp:80,pot:{hp:4,mp:4},cur:0,map:0,
     wands:[mkWand('견습 마법봉',4,.2,.45,4,1,['bolt','bolt',null,null],'#9fd8ff',0)],
-    bag:['energy','dmgup','double',null]};
+    bag:['energy','dmgup','double',null],
+    ap:{int:4,luk:4,wis:4},apFree:0,equip:{hat:null,robe:null,shoes:null,ring:null},gear:[],job:null,job2:false};
 }
 function mkWand(name,slots,delay,recharge,spread,casts,cards,tip,tier){
   const c=(cards||[]).slice(0,slots);while(c.length<slots)c.push(null);
@@ -372,10 +381,45 @@ function genWand(tier){
   return mkWand(WAND_PRE[clamp(tier+irand(0,2),0,6)]+' '+pick(WAND_SUF),slots,delay,recharge,spread,casts,[],pick(TIPS),tier);
 }
 const needExp=lv=>Math.floor(12*Math.pow(lv,1.7)+8);
-const maxHP=()=>60+(S.lv-1)*18;
-const maxMP=()=>80+(S.lv-1)*15;
-const mpRegen=()=>12+S.lv*2;
-const dmgMul=()=>1+(S.lv-1)*.07;
+// ---------- derived stats: level, AP, gear and job all feed one cached table
+const AP_PER_LV=5;
+const AP_INFO={int:{n:'INT',d:'마법 피해 +1%'},luk:{n:'LUK',d:'치명타 확률 +0.4%, 치명타 피해 +1%'},wis:{n:'WIS',d:'최대 MP +5, MP 회복 +0.35/초'}};
+const ELEMS=['fire','ice','thunder','poison'];
+function ensureSave(d){
+  d.ap=d.ap||{int:4,luk:4,wis:4};
+  if(d.apFree===undefined)d.apFree=(d.lv-1)*AP_PER_LV;
+  d.equip=d.equip||{hat:null,robe:null,shoes:null,ring:null};
+  d.gear=d.gear||[];
+  d.job=d.job||null;d.job2=d.job2||false;
+  return d;
+}
+let ST=null;
+const dirty=()=>{ST=null;};
+function stats(){
+  if(ST)return ST;
+  const gsum={};
+  for(const k in S.equip){const it=S.equip[k];if(!it)continue;for(const o of it.opts)gsum[o.k]=(gsum[o.k]||0)+o.v;}
+  const G=k=>gsum[k]||0;
+  const ap={int:S.ap.int+G('int'),luk:S.ap.luk+G('luk'),wis:S.ap.wis+G('wis')};
+  const t={ap,gsum,
+    maxHP:Math.round(60+(S.lv-1)*18+G('maxHP')),
+    maxMP:Math.round(80+(S.lv-1)*10+ap.wis*5+G('maxMP')),
+    mpRegen:(10+S.lv*1.5+ap.wis*.35)*(1+G('mpRegen')),
+    dmgMul:(1+(S.lv-1)*.03+ap.int*.01)*(1+G('dmg')),
+    crit:.05+ap.luk*.004+G('crit'),
+    critDmg:1.8+ap.luk*.01,
+    manaMul:Math.max(.4,1-G('manaCost')),
+    delayMul:Math.max(.5,1-G('castSpeed')),
+    speed:1+G('speed'),
+    elem:{}};
+  for(const e of ELEMS)t.elem[e]=G(e);
+  if(typeof jobBonus==='function')jobBonus(t);
+  return ST=t;
+}
+const maxHP=()=>stats().maxHP;
+const maxMP=()=>stats().maxMP;
+const mpRegen=()=>stats().mpRegen;
+const dmgMul=()=>stats().dmgMul;
 const wand=()=>S.wands[S.cur]||S.wands[0];
 
 function save(){if(!S||!started)return;const d=JSON.parse(JSON.stringify(S));d.map=mapId;d.wands.forEach(w=>{w.ptr=0;w.cool=0;w.rech=0});store.set('naple-save',d);}
@@ -409,6 +453,7 @@ addEventListener('keydown',e=>{
   const open=openOverlay();
   if(e.code==='Escape'){if(open)closeAll();return;}
   if(['KeyI','KeyK','Tab'].includes(e.code)){if(open==='book')closeAll();else if(!open)openBook();return;}
+  if(e.code==='KeyC'){if(open==='char')closeAll();else if(!open)openChar();return;}
   if(open)return;
   if(e.code.startsWith('Digit')){const n=+e.code.slice(5)-1;if(S.wands[n]){S.cur=n;log(`${S.wands[n].name} 장착`);}}
   if(e.code==='KeyQ')usePotion('hp');
@@ -431,6 +476,7 @@ touchEl.querySelectorAll('button').forEach(b=>{
   const k=b.dataset.k;
   const on=e=>{e.preventDefault();initAudio();b.classList.add('on');
     if(k==='book'){openOverlay()?closeAll():openBook();return;}
+    if(k==='char'){openOverlay()?closeAll():openChar();return;}
     if(k==='swap'){S.cur=(S.cur+1)%S.wands.length;log(`${wand().name} 장착`);return;}
     if(k==='potion'){usePotion(S.hp/maxHP()<S.mp/maxMP()?'hp':'mp');return;}
     vkeys[k]=true;};
@@ -462,7 +508,7 @@ function drawCards(w,n,ctx){
   while(n>0&&guard++<64){
     if(w.ptr>=w.cards.length){ctx.wrapped=true;break;}
     const id=w.cards[w.ptr++];if(!id)continue;const c=CARDS[id];
-    if(!ctx.sim){if(S.mp<c.mana){ctx.skipped=true;continue;}S.mp-=c.mana;}
+    if(!ctx.sim){const cost=c.mana*stats().manaMul;if(S.mp<cost){ctx.skipped=true;continue;}S.mp-=cost;}
     ctx.delay+=c.delay||0;ctx.recharge+=c.recharge||0;
     if(c.type==='mod'){applyMod(grp.mods,c);continue;}
     if(c.type==='multi'){n+=c.draw-1;if(c.pattern)grp.mods.pattern=Math.max(grp.mods.pattern,c.pattern);if(c.spreadAdd)grp.mods.spreadAdd+=c.spreadAdd;grp.mods.names.push(c.name);continue;}
@@ -477,7 +523,7 @@ function castWand(ang){
   const ctx={delay:0,recharge:0,wrapped:false,skipped:false};
   const grp=drawCards(w,w.casts||1,ctx);
   if(ctx.wrapped||!hasMore(w)){w.ptr=0;w.rech=Math.max(.05,w.recharge+ctx.recharge);}
-  w.cool=Math.max(.05,w.delay+ctx.delay);
+  w.cool=Math.max(.05,(w.delay+ctx.delay)*stats().delayMul);
   if(!grp.projs.length){if(ctx.skipped&&time-(castWand.warn||0)>2){castWand.warn=time;log('MP가 부족합니다','#8fb8ff');}return;}
   if(player.castT<=0)player.castStart=time;player.castT=.25;sfx('cast');
   spawnGroup(grp,player.x+player.dir*11,player.y-24,ang,w.spread);
@@ -535,7 +581,7 @@ function nearestMob(x,y,maxD,exclude){
 }
 function hitMob(m,base,elem,crit,dirX,o){
   let dmg=base*dmgMul()*rand(.85,1.15);
-  const isCrit=Math.random()<.05+(crit||0);if(isCrit)dmg*=1.8;
+  const st=stats(),isCrit=Math.random()<st.crit+(crit||0);if(isCrit)dmg*=st.critDmg;
   const cy=m.y-m.h/2;
   switch(elem){
     case'fire':
@@ -602,9 +648,9 @@ function rollCard(tier,high){
 function dropItem(kind,x,y,val){drops.push({kind,x,y,vx:rand(-1.5,1.5),vy:rand(-7,-4),val,t:0,onG:false});}
 function gainExp(n){
   S.exp+=n;
-  while(S.exp>=needExp(S.lv)){S.exp-=needExp(S.lv);S.lv++;S.hp=maxHP();S.mp=maxMP();
+  while(S.exp>=needExp(S.lv)){S.exp-=needExp(S.lv);S.lv++;S.apFree+=AP_PER_LV;dirty();S.hp=maxHP();S.mp=maxMP();
     texts.push({x:player.x,y:player.y-80,txt:'LEVEL UP!',t:0,c:'#ffcf4a',big:true,lvl:true});
-    fx.push({type:'ring',x:player.x,y:player.y-30,t:0});sfx('lvl');log(`레벨 ${S.lv} 달성! 최대 HP/MP와 마법 공격력이 올랐습니다.`,'#ffcf4a');save();}
+    fx.push({type:'ring',x:player.x,y:player.y-30,t:0});sfx('lvl');log(`레벨 ${S.lv} 달성! AP ${AP_PER_LV}를 얻었습니다. C 키로 분배하세요.`,'#ffcf4a');save();}
 }
 function usePotion(k){
   if(S.pot[k]<=0){log(k==='hp'?'빨간 포션이 없습니다':'파란 포션이 없습니다','#ff9a8a');return;}
@@ -687,7 +733,7 @@ function updatePlayer(dt){
   const target=(R?1:0)-(L?1:0);
   if(target)P.dir=target;
   const acc=P.onGround?.6:.25;
-  P.vx+=clamp(target*3.6-P.vx,-acc,acc);
+  P.vx+=clamp(target*3.6*stats().speed-P.vx,-acc,acc);
   if(justAct.jump&&P.onGround){
     if(D&&P.plat&&!P.plat.ground){P.drop=P.plat;P.dropT=.3;P.onGround=false;P.y+=2;}
     else{P.vy=-11;P.onGround=false;}
@@ -1317,10 +1363,10 @@ function playerFrame(P){
 }
 function drawPlayer(){
   const P=player;if(P.inv>0&&Math.floor(P.inv*16)%2===0)g.globalAlpha=.45;
-  if(WIZ.img){drawWiz(WIZ.img,playerFrame(P),P.x,P.y,P.dir);g.globalAlpha=1;defer(()=>nameTag(`Lv.${S.lv} 견습마법사`,P.x,P.y+14,'#fff'));return;}
+  if(WIZ.img){drawWiz(WIZ.img,playerFrame(P),P.x,P.y,P.dir);g.globalAlpha=1;defer(()=>nameTag(`Lv.${S.lv} ${jobName()}`,P.x,P.y+14,'#fff'));return;}
   const walk=P.onGround&&Math.abs(P.vx)>.4?Math.sin(P.anim*14):0;
   drawChar(P.x,P.y,P.dir,{...PLAYER_LOOK,wandTip:wand().tip},P.climb?Math.sin(P.y*.2):walk,P.castT>0);
-  g.globalAlpha=1;defer(()=>nameTag(`Lv.${S.lv} 견습마법사`,P.x,P.y+14,'#fff'));
+  g.globalAlpha=1;defer(()=>nameTag(`Lv.${S.lv} ${jobName()}`,P.x,P.y+14,'#fff'));
 }
 function drawPotion(x,y,k){
   const c=k==='hp'?'#e8424a':'#3f7fe8';const pg=g.createRadialGradient(x-3,y-1,1,x,y+2,8);pg.addColorStop(0,shadeHex(c,.5));pg.addColorStop(1,shadeHex(c,-.2));
@@ -1484,12 +1530,13 @@ function drawHUD(){
   // bottom bar
   const by=H-50;g.fillStyle='rgba(12,15,32,.9)';g.fillRect(0,by,W,50);g.fillStyle='#c9a24a';g.fillRect(0,by,W,1.5);
   txt('Lv.',14,by+17,13,'#ffe27a',null,'left');txt(String(S.lv),38,by+18,26,'#ffcf4a','#3a2508','left',4);
-  txt('견습마법사',14,by+34,11,'#a8aecd',null,'left');
+  txt(jobName(),14,by+34,11,'#a8aecd',null,'left');
+  if(S.apFree>0){g.font=`26px ${FONT}`;const ax=Math.min(70,42+g.measureText(String(S.lv)).width);g.fillStyle='#ffcf4a';rr(ax,by+4,24,13,4);g.fill();txt('AP',ax+12,by+11,10,'#2a1d05');}
   bar2(96,by+7,300,'HP',S.hp,maxHP(),'#ff5a5a','#b02a2a');
   bar2(96,by+24,300,'MP',S.mp,maxMP(),'#5aa8ff','#2a58b0');
   txt(`메소 ${S.meso.toLocaleString()}`,420,by+15,15,'#ffd86a',null,'left');
   txt(`Q 빨간 포션 ${S.pot.hp}   E 파란 포션 ${S.pot.mp}`,420,by+33,13,'#e8e3d6',null,'left');
-  txt('I 마법서   1~4 지팡이   P 화면',W-14,by+24,12,'#a8aecd',null,'right');
+  txt('I 마법서   C 캐릭터   1~4 지팡이   P 화면',W-14,by+24,12,'#a8aecd',null,'right');
   // exp
   const need=needExp(S.lv),ek=S.exp/need;g.fillStyle='#2a2a1a';g.fillRect(0,H-8,W,8);g.fillStyle='#e8d23a';g.fillRect(0,H-8,W*ek,8);
   g.font=`10px ${FONT}`;txt(`EXP ${S.exp} / ${need} (${(ek*100).toFixed(1)}%)`,W/2,H-4,10,'#fff','#000','center',3);
@@ -1526,8 +1573,8 @@ function render(){
 
 // ---------- overlays
 const $=id=>document.getElementById(id);
-function openOverlay(){if(!$('book').hidden)return'book';if(!$('shop').hidden)return'shop';if(!$('dead').hidden)return'dead';if(!$('title').hidden)return'title';return null;}
-function closeAll(){$('book').hidden=true;$('shop').hidden=true;sel=null;paused=false;save();}
+function openOverlay(){if(!$('book').hidden)return'book';if(!$('char').hidden)return'char';if(!$('shop').hidden)return'shop';if(!$('dead').hidden)return'dead';if(!$('title').hidden)return'title';return null;}
+function closeAll(){$('book').hidden=true;$('shop').hidden=true;$('char').hidden=true;sel=null;paused=false;save();}
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeAll);
 let sel=null;
 function slotHTML(loc,id){
@@ -1584,7 +1631,7 @@ function renderBook(){
   $('book-body').querySelectorAll('[data-drop]').forEach(b=>b.onclick=()=>{
     if(b.dataset.confirm){const i=+b.dataset.drop;const w=S.wands.splice(i,1)[0];w.cards.forEach(c=>{if(c){const k=S.bag.indexOf(null);if(k>=0)S.bag[k]=c;else if(S.bag.length<30)S.bag.push(c);}});S.cur=clamp(S.cur>=i&&S.cur>0?S.cur-1:S.cur,0,S.wands.length-1);renderBook();}
     else{b.dataset.confirm=1;b.textContent='정말 버릴까요? (카드는 가방으로)';}});
-  const rb=$('btn-reset');rb.onclick=()=>{if(rb.dataset.confirm){store.del('naple-save');S=freshSave();changeMap(0,'L');closeAll();}else{rb.dataset.confirm=1;rb.textContent='저장을 지우고 새로 시작합니다. 한 번 더 누르세요';}};
+  const rb=$('btn-reset');rb.onclick=()=>{if(rb.dataset.confirm){store.del('naple-save');S=freshSave();dirty();changeMap(0,'L');closeAll();}else{rb.dataset.confirm=1;rb.textContent='저장을 지우고 새로 시작합니다. 한 번 더 누르세요';}};
 }
 // drag & click on slots
 let drag=null;const ghost=$('ghost');
@@ -1608,6 +1655,36 @@ addEventListener('pointerup',e=>{
   renderBook();
 });
 $('book').addEventListener('mouseover',e=>{const s=e.target.closest('[data-slot]');if(!s||drag)return;const id=getLoc(s.dataset.slot);if(id){const el=$('detail');if(el)el.innerHTML=cardDetail(id);}});
+
+// ---------- character window: AP, derived stats (equipment and job sections are appended by later systems)
+const jobName=()=>typeof jobTitle==='function'?jobTitle():'견습마법사';
+const pct=v=>`${(v*100).toFixed(1).replace(/\.0$/,'')}%`;
+function openChar(){paused=true;$('char').hidden=false;renderChar();}
+function apResetCost(){return S.lv*100;}
+function renderChar(){
+  const st=stats();
+  const apRows=Object.keys(AP_INFO).map(k=>`<div class="item"><div class="grow"><div class="nm">${AP_INFO[k].n} <span class="price">${S.ap[k]}</span>${st.ap[k]!==S.ap[k]?` <span class="tagline">(장비 +${st.ap[k]-S.ap[k]})</span>`:''}</div><div class="ds">${AP_INFO[k].d}</div></div>
+    <button class="btn small" data-ap="${k}" data-n="1" ${S.apFree<1?'disabled':''}>+1</button><button class="btn ghost small" data-ap="${k}" data-n="5" ${S.apFree<5?'disabled':''}>+5</button></div>`).join('');
+  const el=ELEMS.filter(e=>st.elem[e]).map(e=>`<span>${ELEM[e].n} 피해 <b>+${pct(st.elem[e])}</b></span>`).join('');
+  $('char-body').innerHTML=`
+    <div class="row"><span class="wand-name">Lv.${S.lv} ${jobName()}</span><span class="label">남은 AP <span class="price">${S.apFree}</span></span><span style="flex:1"></span>
+      <button class="btn ghost small" id="ap-reset" ${S.meso<apResetCost()?'disabled':''}>AP 초기화 (${apResetCost()} 메소)</button></div>
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:0">${apRows}</div>
+      <div class="detail"><h4>능력치</h4><div class="stats" style="flex-direction:column;gap:4px;font-size:13px">
+        <span>최대 HP <b>${st.maxHP}</b> · 최대 MP <b>${st.maxMP}</b></span>
+        <span>MP 회복 <b>${st.mpRegen.toFixed(1)}/초</b></span>
+        <span>마법 피해 <b>×${st.dmgMul.toFixed(2)}</b></span>
+        <span>치명타 <b>${pct(st.crit)}</b> · 치명타 피해 <b>×${st.critDmg.toFixed(2)}</b></span>
+        <span>마나 소모 <b>×${st.manaMul.toFixed(2)}</b> · 시전 지연 <b>×${st.delayMul.toFixed(2)}</b></span>
+        <span>이동 속도 <b>×${st.speed.toFixed(2)}</b></span>${el}</div></div>
+    </div>
+    <div id="char-extra" style="display:flex;flex-direction:column;gap:14px"></div>`;
+  $('char-body').querySelectorAll('[data-ap]').forEach(b=>b.onclick=()=>{const n=Math.min(+b.dataset.n,S.apFree);if(n<1)return;S.ap[b.dataset.ap]+=n;S.apFree-=n;dirty();renderChar();});
+  const rb=$('ap-reset');rb.onclick=()=>{if(!rb.dataset.confirm){rb.dataset.confirm=1;rb.textContent='한 번 더 누르면 초기화';return;}
+    if(S.meso<apResetCost())return;S.meso-=apResetCost();S.apFree+=S.ap.int+S.ap.luk+S.ap.wis-12;S.ap={int:4,luk:4,wis:4};dirty();S.mp=Math.min(S.mp,maxMP());renderChar();};
+  if(typeof renderCharExtra==='function')renderCharExtra();
+}
 
 // shops & npc
 function openNpc(n){
@@ -1661,7 +1738,7 @@ function renderGuide(i){
 const saved=store.get('naple-save');
 if(saved&&saved.wands)$('btn-cont').hidden=false;
 function start(data){
-  S=data||freshSave();
+  S=ensureSave(data||freshSave());dirty();
   S.wands.forEach(w=>{w.ptr=0;w.cool=0;w.rech=0;});
   started=true;$('title').hidden=true;paused=false;
   changeMap(data?clamp(data.map||0,0,MAPS.length-1):0,'L');
