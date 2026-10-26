@@ -12,7 +12,7 @@
 :root{
   --bg:#0c0f1e; --panel:#1a2042; --panel2:#232a55; --inset:#11152d;
   --line:#c9a24a; --line-soft:#5f4d27; --text:#f3eedf; --muted:#a8aecd; --accent:#ffcf4a;
-  --proj:#d0524c; --mod:#3a7fc2; --multi:#cf9d1a; --trig:#9b5bc0; --danger:#e0564a; --ok:#63c46b;
+  --proj:#d0524c; --mod:#3a7fc2; --multi:#cf9d1a; --trig:#9b5bc0; --util:#3fae6a; --danger:#e0564a; --ok:#63c46b;
   --f-display:"Jua","Gowun Dodum",system-ui,sans-serif;
   --f-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   color-scheme:dark;
@@ -67,6 +67,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
 .card.proj{background:radial-gradient(circle at 40% 35%,#7a2f2b,#3a1514);border-color:var(--proj)}
 .card.mod{background:radial-gradient(circle at 40% 35%,#24507e,#0f2238);border-color:var(--mod)}
 .card.multi{background:radial-gradient(circle at 40% 35%,#7a5b10,#33250a);border-color:var(--multi)}
+.card.util{background:radial-gradient(circle at 40% 35%,#1f5e3a,#0c2617);border-color:var(--util)}
 .card.trig{background:radial-gradient(circle at 40% 35%,#5b2f78,#26123a);border-color:var(--trig)}
 .card .up{position:absolute;left:4px;top:1px;font-size:11px;color:#ffe27a;text-shadow:0 1px 0 #000}
 .card .el{position:absolute;right:3px;bottom:2px;width:9px;height:9px;border-radius:50%;border:1px solid rgba(0,0,0,.5)}
@@ -285,6 +286,16 @@ const CARDS={
   triple:{name:'트리플 캐스트',ab:'3',type:'multi',tier:1,mana:8,draw:3,spreadAdd:8,desc:'다음 카드 3장을 동시에 시전합니다. 퍼짐 +8°.'},
   fan:{name:'부채꼴 캐스트',ab:'부',type:'multi',tier:2,mana:6,draw:3,pattern:28,desc:'다음 카드 3장을 부채꼴로 고르게 펼쳐 시전합니다.'},
   quad:{name:'쿼드 캐스트',ab:'4',type:'multi',tier:3,mana:12,draw:4,desc:'다음 카드 4장을 동시에 시전합니다.'},
+  // utility: drawn like projectiles, so multicast / triggers / modifiers combine with them
+  teleport:{name:'텔레포트 볼트',ab:'순',type:'util',tier:1,kind:'tele',mana:12,delay:.1,dmg:0,speed:13,life:.45,size:6,color:'#c9b6ff',desc:'닿은 곳(적·바닥·사거리 끝)으로 순간이동합니다. 이동 직후 잠깐 무적. 여러 장이 동시에 날아가면 마지막에 닿은 곳으로 갑니다.'},
+  swap:{name:'스왑 볼트',ab:'바',type:'util',tier:2,kind:'swap',mana:10,delay:.1,dmg:4,speed:12,life:.6,size:6,color:'#ff9ad8',desc:'맞힌 적과 자리를 맞바꾸고, 그 적을 잠깐 기절시킵니다.'},
+  wall:{name:'마법 벽',ab:'벽',type:'util',tier:1,kind:'wall',mana:18,delay:.15,recharge:.3,dmg:6,speed:10,life:.18,size:5,color:'#b8c8ff',desc:'조금 앞에 3초 동안 벽을 세웁니다. 적과 적의 탄을 막고, 원소가 붙으면 닿은 적에게 0.5초마다 그 원소를 입힙니다. 최대 3개.'},
+  plat:{name:'발판 생성',ab:'판',type:'util',tier:0,kind:'plat',mana:10,delay:.1,dmg:0,speed:9,life:.3,size:5,color:'#ffe9a8',desc:'날아간 끝에 4초 동안 밟을 수 있는 발판을 만듭니다. 최대 3개.'},
+  spirit:{name:'소환: 정령',ab:'령',type:'util',tier:2,kind:'spirit',mana:25,delay:.2,recharge:.3,dmg:7,speed:0,life:10,size:7,color:'#9fe8ff',desc:'10초 동안 곁을 돌며 가까운 적을 쏘는 정령을 부릅니다. 같은 묶음의 원소 부여와 데미지 증가가 정령 공격에 붙습니다. 최대 3마리.'},
+  turret:{name:'소환: 포탑',ab:'탑',type:'util',tier:3,kind:'turret',trigger:'turret',mana:30,delay:.2,recharge:.4,dmg:0,speed:0,life:5,size:9,color:'#ffcf7a',desc:'그 자리에 포탑을 세웁니다. 포탑은 5초 동안 0.8초마다 다음 카드 1묶음을 가까운 적에게 쏩니다. 최대 2개.'},
+  shield:{name:'보호막',ab:'막',type:'util',tier:1,kind:'shield',mana:20,delay:.15,recharge:.3,dmg:0,speed:0,life:6,size:0,color:'#8fd8ff',desc:'6초 동안 피해를 흡수하는 보호막을 두릅니다 (20 + 최대 MP의 15%).'},
+  manarec:{name:'마나 회수',ab:'회',type:'util',tier:1,kind:'mana',mana:0,delay:.2,recharge:.4,dmg:0,speed:0,life:0,size:0,color:'#5aa8ff',desc:'MP를 25 회복합니다. 투사체는 없고 재충전 +0.4초.'},
+  heal:{name:'힐',ab:'힐',type:'util',tier:0,kind:'heal',mana:22,delay:.25,dmg:6,speed:0,life:0,size:0,color:'#fff2a8',desc:'주변을 성스러운 빛으로 감쌉니다. 범위 안의 나는 최대 HP의 12% + WIS×2만큼 회복하고, 적에게는 약한 피해를 줍니다. 거대화로 범위가 넓어지고, 원소 부여가 붙으면 그 원소로 때립니다.'},
 };
 const CARD_PRICE=[60,180,450,1000];
 // upgraded cards are stored as codes like "fire+2"; C(code) returns the card with upgrades applied
@@ -307,7 +318,7 @@ function C(code){
 }
 const cardValue=c=>CARD_PRICE[c.tier]*Math.pow(2.5,c.up||0);
 const mergeCost=c=>Math.round(CARD_PRICE[c.tier]*.5*((c.up||0)+1));
-const TYPE_N={proj:'투사체',mod:'수정자',multi:'멀티캐스트'};
+const TYPE_N={proj:'투사체',mod:'수정자',multi:'멀티캐스트',util:'유틸'};
 const cardClass=c=>c.type==='proj'?(c.trigger?'trig':'proj'):c.type;
 
 // ---------- monsters
@@ -386,7 +397,7 @@ const player={x:200,y:GROUND,vx:0,vy:0,dir:1,onGround:true,plat:null,climb:null,
 function freshSave(){
   return {lv:1,exp:0,meso:120,hp:60,mp:80,pot:{hp:4,mp:4},cur:0,map:0,
     wands:[mkWand('견습 마법봉',4,.2,.45,4,1,['bolt','bolt',null,null],'#9fd8ff',0)],
-    bag:['energy','dmgup','double',null],
+    bag:['energy','dmgup','double','heal'],
     ap:{int:4,luk:4,wis:4},apFree:0,equip:{hat:null,robe:null,shoes:null,ring:null},gear:[],job:null,job2:false};
 }
 function mkWand(name,slots,delay,recharge,spread,casts,cards,tip,tier){
@@ -419,6 +430,8 @@ const PERKS={
   echo:{d:v=>`${pct(v)} 확률로 시전이 한 번 더 메아리침`,r:[.1,.18]},
   leech:{d:()=>'적중할 때마다 MP 1 회복'},
   big:{d:v=>`투사체 크기 +${pct(v)}`,r:[.25,.4]},
+  summon:{d:v=>`소환수(정령·포탑) 지속 +${pct(v)}`,r:[.4,.7]},
+  blink:{d:()=>'텔레포트·스왑 직후 다음 시전 마나 0'},
 };
 function rollPerks(tier){
   const n=tier>=4?irand(2,3):tier>=3?2:tier>=2?irand(1,2):tier>=1?1:(Math.random()<.3?1:0);
@@ -499,10 +512,10 @@ const gearPrice=it=>Math.round(80*(it.tier+1)*Math.pow(it.rar+1,1.5));
 const pct=v=>`${(v*100).toFixed(1).replace(/\.0$/,'')}%`;
 // ---------- job advancement: Lv.10 picks an element line, Lv.30 masters it
 const JOBS={
-  fire:{n1:'화염 마법사',n2:'불꽃의 대마도사',d1:'화염 피해 +20%, 화상 피해 +50%. 화염이 들어간 연계(융해, 독가스 폭발, 증기 폭발, 과부하) 피해 ×1.45.',d2:'화염 피해 +25% 추가, 화염 연계 피해 ×1.9. 불타는 적이 쓰러지면 폭발합니다.'},
-  ice:{n1:'냉기 마법사',n2:'서리의 대마도사',d1:'냉기 피해 +20%. 2번만 맞혀도 빙결. 냉기가 들어간 연계(융해, 증기 폭발, 파쇄) 피해 ×1.45.',d2:'냉기 피해 +25% 추가, 냉기 연계 피해 ×1.9. 빙결된 적이 받는 피해 +30%.'},
-  thunder:{n1:'전격 마법사',n2:'뇌전의 대마도사',d1:'전격 피해 +20%, 전격 투사체 연쇄 +1. 전격 연계(파쇄, 과부하) 피해 ×1.45, 과부하 범위 +40%.',d2:'전격 피해 +25% 추가, 전격 연계 피해 ×1.9. 모든 적중에 15% 확률로 연쇄 번개 2회.'},
-  poison:{n1:'독술사',n2:'역병의 대마도사',d1:'독 피해 +20%, 중독 피해 +60%. 독 연계(독가스 폭발) 피해 ×1.45.',d2:'독 피해 +25% 추가, 독 연계 피해 ×1.9. 중독된 적이 쓰러지면 독안개가 피어납니다.'},
+  fire:{n1:'화염 마법사',n2:'불꽃의 대마도사',d1:'화염 피해 +20%, 화상 피해 +50%. 화염이 들어간 연계(융해, 독가스 폭발, 증기 폭발, 과부하) 피해 ×1.45. 마법 벽이 사라질 때 폭발합니다.',d2:'화염 피해 +25% 추가, 화염 연계 피해 ×1.9. 불타는 적이 쓰러지면 폭발합니다.'},
+  ice:{n1:'냉기 마법사',n2:'서리의 대마도사',d1:'냉기 피해 +20%. 2번만 맞혀도 빙결. 냉기가 들어간 연계(융해, 증기 폭발, 파쇄) 피해 ×1.45. 마법 벽이 2배 오래 가고 닿은 적을 얼립니다.',d2:'냉기 피해 +25% 추가, 냉기 연계 피해 ×1.9. 빙결된 적이 받는 피해 +30%.'},
+  thunder:{n1:'전격 마법사',n2:'뇌전의 대마도사',d1:'전격 피해 +20%, 전격 투사체 연쇄 +1. 전격 연계(파쇄, 과부하) 피해 ×1.45, 과부하 범위 +40%. 텔레포트한 자리에서 번개가 가까운 적 3명에게 튑니다.',d2:'전격 피해 +25% 추가, 전격 연계 피해 ×1.9. 모든 적중에 15% 확률로 연쇄 번개 2회.'},
+  poison:{n1:'독술사',n2:'역병의 대마도사',d1:'독 피해 +20%, 중독 피해 +60%. 독 연계(독가스 폭발) 피해 ×1.45. 정령의 공격이 독을 입히고, 정령이 사라질 때 독안개를 남깁니다.',d2:'독 피해 +25% 추가, 독 연계 피해 ×1.9. 중독된 적이 쓰러지면 독안개가 피어납니다.'},
 };
 const JOB_LV=[10,30];
 function jobTitle(){return S.job?(S.job2?JOBS[S.job].n2:JOBS[S.job].n1):'견습마법사';}
@@ -525,7 +538,7 @@ function sfx(type){
   if(muted||!AC)return;
   const t=AC.currentTime,o=AC.createOscillator(),gn=AC.createGain();o.connect(gn);gn.connect(AC.destination);
   const P={cast:[660,880,.05,'triangle',.04],hit:[220,120,.08,'square',.03],coin:[988,1319,.08,'sine',.05],
-    lvl:[523,1047,.5,'triangle',.08],hurt:[180,90,.18,'sawtooth',.05],boom:[120,40,.3,'sawtooth',.07],buy:[700,1050,.12,'sine',.05],portal:[300,900,.3,'sine',.05]}[type];
+    lvl:[523,1047,.5,'triangle',.08],hurt:[180,90,.18,'sawtooth',.05],boom:[120,40,.3,'sawtooth',.07],buy:[700,1050,.12,'sine',.05],portal:[300,900,.3,'sine',.05],heal:[520,1040,.35,'sine',.06]}[type];
   if(!P)return;o.type=P[3];o.frequency.setValueAtTime(P[0],t);o.frequency.exponentialRampToValueAtTime(P[1],t+P[2]);
   gn.gain.setValueAtTime(P[4],t);gn.gain.exponentialRampToValueAtTime(.0001,t+P[2]+.02);o.start(t);o.stop(t+P[2]+.03);
 }
@@ -616,7 +629,7 @@ function drawCards(w,n,ctx){
 }
 function castWand(ang){
   const w=wand();if(!w||w.cool>0||w.rech>0)return;
-  const ctx={delay:0,recharge:0,wrapped:false,skipped:false,free:w.ptr===0&&perk(w,'firstFree')};
+  const ctx={delay:0,recharge:0,wrapped:false,skipped:false,free:(w.ptr===0&&perk(w,'firstFree'))||player.freeCast};player.freeCast=false;
   const grp=drawCards(w,w.casts||1,ctx);
   if(ctx.wrapped||!hasMore(w)){w.ptr=0;w.rech=Math.max(.05,w.recharge+ctx.recharge);}
   w.cool=Math.max(.05,(w.delay+ctx.delay)*stats().delayMul);
@@ -641,7 +654,8 @@ function makeProj(p,M,x,y,ang,src={}){
   const c=C(p.id),w=src.w,sp=c.speed*M.speedMul,elem=M.element||c.element||null;
   // wand perks add up, gear/job element bonus multiplies on top
   const mult=(1+(elem?perk(w,elem):0)+(src.multi?perk(w,'multi'):0)+(src.trig?perk(w,'trig'):0))*(1+(elem?stats().elem[elem]:0));
-  const o={id:cardId(p.id),c,w,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:c.size*M.sizeMul*(1+perk(w,'big')),dmg:(c.dmg+M.dmg)*mult,leech:perk(w,'leech'),life:c.life*M.lifeMul,age:0,
+  if(UTIL_NOW[c.kind]){UTIL_NOW[c.kind](c,M,x,y,p,w,mult);return;}
+  const o={id:cardId(p.id),c,w,x,y,util:c.type==='util'?c.kind:null,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:c.size*M.sizeMul*(1+perk(w,'big')),dmg:(c.dmg+M.dmg)*mult,leech:perk(w,'leech'),life:c.life*M.lifeMul,age:0,
     elem,homing:M.homing||(perk(w,'seek')?.35:0),pierce:M.pierce+(perk(w,'pierce')?1:0),bounce:(c.bounce||0)+M.bounce,explode:Math.max(c.explode||0,M.explode),
     crit:M.crit+perk(w,'crit'),gravity:c.gravity||0,chain:c.chain||0,kind:c.kind||'shot',trigger:c.trigger||null,payload:p.payload,fired:false,hit:new Set(),tick:0,dead:false};
   if(M.element==='thunder'&&!o.chain)o.chain=1;
@@ -671,6 +685,119 @@ function describe(grp){
   const ps=grp.projs.map(p=>C(p.id).name+(p.payload?` → [${describe(p.payload)||'없음'}]`:''));
   const mods=grp.mods.names.length?`(${grp.mods.names.join(' + ')}) `:'';
   return mods+(ps.length?ps.join(', '):'투사체 없음');
+}
+
+// ---------- utility magic: teleport, swap, walls, temporary platforms, spirits, turrets, shield, mana, heal
+let walls=[],spirits=[],turrets=[];
+function platBelow(x,y){let best=MAP.plats[0];for(const p of MAP.plats){if(p.gone)continue;if(x>=p.x&&x<=p.x+p.w&&p.y>=y-6&&p.y<best.y)best=p;}return best;}
+function teleportTo(x,y,w){
+  const P=player;burst(P.x,P.y-24,'#c9b6ff',14);
+  x=clamp(x,30,MAP.w-30);const pl=platBelow(x,y);
+  Object.assign(P,{x,y:pl.y,plat:pl,onGround:true,vy:0,vx:0,climb:null,inv:Math.max(P.inv,.3)});
+  burst(P.x,P.y-24,'#c9b6ff',18);sfx('portal');
+  if(isJob('thunder')){const seen=new Set();for(let i=0;i<3;i++){const m=nearestMob(P.x,P.y-30,220,seen);if(!m)break;seen.add(m);
+    bolts.push({a:{x:P.x,y:P.y-30},b:{x:m.x,y:m.y-m.h/2},t:.2});hitMob(m,10+S.lv*.8,'thunder',0,m.x-P.x,null);}}
+  if(perk(w,'blink'))P.freeCast=true;
+}
+function swapWith(m,w){
+  const P=player,px=P.x,py=P.y;burst(px,py-24,'#ff9ad8',12);burst(m.x,m.y-m.h/2,'#ff9ad8',12);
+  Object.assign(P,{x:m.x,y:m.y,plat:m.plat,onGround:true,vy:0,climb:null,inv:Math.max(P.inv,.4)});
+  const np=platBelow(px,py-1);m.plat=np;m.y=np.y;m.x=clamp(px,np.x+m.w/2,np.x+np.w-m.w/2);m.jy=0;m.vy=0;m.shock=Math.max(m.shock,.6);
+  sfx('portal');if(perk(w,'blink'))P.freeCast=true;
+}
+function makeWall(x,y,elem,dmg){
+  const b=platBelow(x,y).y,ice=isJob('ice');
+  walls.push({x,bot:b,top:b-110,t:ice?6:3,elem:elem||(ice?'ice':null),dmg,tick:0});
+  if(walls.length>3)walls.shift();
+  burst(x,b-55,'#b8c8ff',12);sfx('hit');
+}
+function makeTempPlat(x,y){
+  const p={x:Math.round(x-54),y:Math.round(clamp(y,140,GROUND-60)),w:108,temp:true,t:4};MAP.plats.push(p);
+  const temps=MAP.plats.filter(q=>q.temp);if(temps.length>3)removePlat(temps[0]);
+  burst(x,p.y,'#ffe9a8',10);
+}
+function removePlat(p){p.gone=true;const i=MAP.plats.indexOf(p);if(i>=0)MAP.plats.splice(i,1);}
+function utilEnd(o){
+  if(o.util==='tele')teleportTo(o.x,o.y,o.w);
+  else if(o.util==='wall')makeWall(o.x,o.y,o.elem,o.dmg);
+  else if(o.util==='plat')makeTempPlat(o.x,o.y);
+}
+// effects that happen at the cast point instead of flying
+const UTIL_NOW={
+  spirit(c,M,x,y,p,w){spirits.push({x,y,a:rand(6.28),t:10*(1+perk(w,'summon')),elem:M.element||(isJob('poison')?'poison':null),dmg:c.dmg+M.dmg,cd:.3,w});
+    if(spirits.length>3)spirits.shift();burst(x,y,'#9fe8ff',12);sfx('heal');},
+  turret(c,M,x,y,p,w){turrets.push({x,y:platBelow(x,y).y,t:5*(1+perk(w,'summon')),cd:.4,payload:p.payload,w});if(turrets.length>2)turrets.shift();sfx('hit');},
+  shield(c,M){player.shield=Math.max(player.shield||0,Math.round(20+maxMP()*.15+M.dmg*2));player.shieldT=6;burst(player.x,player.y-26,'#7fe3ff',14);sfx('heal');},
+  mana(c,M){const v=Math.round(25+M.dmg);S.mp=Math.min(maxMP(),S.mp+v);num(player.x,player.y-70,'+'+v+' MP','mana');},
+  heal(c,M,x,y,p,w,mult){
+    const R=170*M.sizeMul,amt=Math.round(maxHP()*.12+stats().ap.wis*2+M.dmg*2);
+    if(Math.hypot(player.x-x,(player.y-30)-y)<R+30){S.hp=Math.min(maxHP(),S.hp+amt);num(player.x,player.y-70,'+'+amt,'heal');}
+    for(const m of mobs){if(m.dead)continue;if(Math.hypot(m.x-x,(m.y-m.h/2)-y)<R+m.w/2)hitMob(m,(c.dmg+M.dmg)*mult,M.element,M.crit,m.x-x,null);}
+    fx.push({type:'heal',x,y,r:R,t:0});sfx('heal');},
+};
+function updateUtil(dt){
+  const P=player;
+  if(P.shieldT>0){P.shieldT-=dt;if(P.shieldT<=0)P.shield=0;}
+  for(const wl of walls){
+    wl.t-=dt;wl.tick-=dt;
+    for(const m of mobs){
+      if(m.dead||m.y+m.jy<wl.top||m.y+m.jy-m.h>wl.bot)continue;
+      const dx=m.x-wl.x,lim=m.w/2+8;
+      if(Math.abs(dx)<lim){m.x=wl.x+(dx<0?-lim:lim);m.dir=dx<0?-1:1;m.kb=0;if(wl.elem&&wl.tick<=0)hitMob(m,wl.dmg,wl.elem,0,0,null);}
+    }
+    if(wl.tick<=0)wl.tick=.5;
+    for(const e of eshots)if(Math.abs(e.x-wl.x)<10+e.r&&e.y>wl.top&&e.y<wl.bot){e.life=0;burst(e.x,e.y,'#b8c8ff',6);}
+    if(wl.t<=0&&isJob('fire'))explosion(wl.x,wl.bot-55,75,10+S.lv,'#ff7a2f');
+  }
+  walls=walls.filter(w=>w.t>0);
+  for(const p of MAP.plats.filter(q=>q.temp)){p.t-=dt;if(p.t<=0)removePlat(p);}
+  for(const sp of spirits){
+    sp.t-=dt;sp.a+=dt*2.4;
+    sp.x+=(P.x+Math.cos(sp.a)*38-sp.x)*.15;sp.y+=(P.y-50+Math.sin(sp.a*2)*8-sp.y)*.15;
+    if(Math.random()<.3)parts.push({x:sp.x,y:sp.y,vx:0,vy:-.3,life:.3,c:sp.elem?ELEM[sp.elem].c:'#9fe8ff',s:2.5});
+    sp.cd-=dt;
+    if(sp.cd<=0){const m=nearestMob(sp.x,sp.y,320);
+      if(m){sp.cd=.6;const M2=newMods();M2.element=sp.elem;M2.dmg=sp.dmg-CARDS.bolt.dmg;M2.sizeMul=.7;M2.lifeMul=1.4;
+        makeProj({id:'bolt',payload:null},M2,sp.x,sp.y,Math.atan2(m.y-m.h/2-sp.y,m.x-sp.x),{w:sp.w});}
+      else sp.cd=.2;}
+    if(sp.t<=0&&isJob('poison'))makeProj({id:'poison',payload:null},newMods(),sp.x-50,sp.y,0,{w:sp.w});
+  }
+  spirits=spirits.filter(sp=>sp.t>0);
+  for(const tu of turrets){
+    tu.t-=dt;tu.cd-=dt;
+    if(tu.cd<=0){tu.cd=.8;if(!tu.payload||!tu.payload.projs.length)continue;
+      const m=nearestMob(tu.x,tu.y-34,420);
+      if(m)spawnGroup(tu.payload,tu.x,tu.y-34,Math.atan2(m.y-m.h/2-(tu.y-34),m.x-tu.x),4,{w:tu.w,trig:true});else tu.cd=.2;}
+  }
+  turrets=turrets.filter(t=>t.t>0);
+}
+function drawWalls(){
+  for(const wl of walls){
+    const c=wl.elem?ELEM[wl.elem].c:'#b8c8ff',a=wl.t<.6?.35+.35*Math.sin(time*30):.85;
+    g.globalAlpha=a;const gr=g.createLinearGradient(wl.x-8,0,wl.x+8,0);gr.addColorStop(0,withA(c,.3));gr.addColorStop(.5,withA(c,.9));gr.addColorStop(1,withA(c,.3));
+    g.fillStyle=gr;rr(wl.x-8,wl.top,16,wl.bot-wl.top,4);g.fill();g.strokeStyle='#ffffff';g.lineWidth=1.5;g.stroke();
+    g.globalCompositeOperation='lighter';drawGlow(c,wl.x,(wl.top+wl.bot)/2,46,.35*a);g.globalCompositeOperation='source-over';g.globalAlpha=1;
+  }
+}
+function drawTurrets(){
+  for(const tu of turrets){
+    const x=tu.x,y=tu.y,first=tu.payload&&tu.payload.projs[0],col=first?C(first.id).color:'#ffcf7a';
+    if(tu.t<1&&Math.floor(time*12)%2)g.globalAlpha=.5;
+    g.fillStyle='#5a5f7a';g.beginPath();g.moveTo(x-14,y);g.lineTo(x-8,y-22);g.lineTo(x+8,y-22);g.lineTo(x+14,y);g.closePath();g.fill();
+    g.strokeStyle=OL;g.lineWidth=2;g.stroke();g.fillStyle='#8a90b0';g.fillRect(x-10,y-27,20,5);
+    g.globalCompositeOperation='lighter';drawGlow(col,x,y-34,18,.9);g.globalCompositeOperation='source-over';
+    g.fillStyle='#ffffff';g.beginPath();g.arc(x,y-34,4,0,7);g.fill();g.globalAlpha=1;
+  }
+}
+function drawSpirits(){
+  g.globalCompositeOperation='lighter';
+  for(const sp of spirits){const c=sp.elem?ELEM[sp.elem].c:'#9fe8ff',a=sp.t<1?.4+.4*Math.sin(time*24):1;drawGlow(c,sp.x,sp.y,16,.9*a);drawGlow('#ffffff',sp.x,sp.y,6,a);}
+  g.globalCompositeOperation='source-over';
+}
+function drawShield(){
+  if(!(player.shield>0))return;
+  g.globalCompositeOperation='lighter';drawGlow('#7fe3ff',player.x,player.y-26,42,.22+.08*Math.sin(time*6));g.globalCompositeOperation='source-over';
+  g.strokeStyle='rgba(170,235,255,.75)';g.lineWidth=2;g.beginPath();g.ellipse(player.x,player.y-26,24,31,0,0,7);g.stroke();
 }
 
 // ---------- combat
@@ -768,7 +895,10 @@ function usePotion(k){
 }
 function hurtPlayer(dmg,fromX){
   if(player.inv>0||paused)return;
-  dmg=Math.round(dmg*rand(.9,1.1));S.hp-=dmg;player.inv=1.3;sfx('hurt');shake=5;
+  dmg=Math.round(dmg*rand(.9,1.1));
+  if(player.shield>0){const a=Math.min(player.shield,dmg);player.shield-=a;dmg-=a;burst(player.x,player.y-26,'#7fe3ff',10);
+    if(dmg<=0){player.inv=.6;num(player.x,player.y-70,'막음','mana');sfx('hit');return;}}
+  S.hp-=dmg;player.inv=1.3;sfx('hurt');shake=5;
   num(player.x,player.y-70,dmg,'hurt');
   player.vx=Math.sign(player.x-fromX||1)*4;player.vy=-5;player.onGround=false;player.climb=null;
   if(S.hp<=0){S.hp=0;die();}
@@ -776,7 +906,7 @@ function hurtPlayer(dmg,fromX){
 function die(){paused=true;document.getElementById('dead').hidden=false;}
 document.getElementById('btn-revive').onclick=()=>{
   document.getElementById('dead').hidden=true;
-  S.exp=Math.max(0,S.exp-Math.floor(needExp(S.lv)*.1));S.hp=maxHP();S.mp=maxMP();changeMap(0,'R');paused=false;
+  S.exp=Math.max(0,S.exp-Math.floor(needExp(S.lv)*.1));S.hp=maxHP();S.mp=maxMP();player.shield=0;spirits=[];changeMap(0,'R');paused=false;
 };
 
 // ---------- spawning
@@ -788,10 +918,11 @@ function spawnMob(type,plat){
     vy:0,jy:0,kb:0,flash:0,aggro:0,boss:!!T.boss,fade:0,dead:false,showHp:0,burn:0,chill:0,frozen:0,shock:0,poison:0,tick:0,act:2,anim:rand(10)});
 }
 function pickPlat(){
-  const ps=MAP.plats;let tot=0;ps.forEach(p=>tot+=p.w);let r=rand(tot);
+  const ps=MAP.plats.filter(p=>!p.temp);let tot=0;ps.forEach(p=>tot+=p.w);let r=rand(tot);
   for(const p of ps){r-=p.w;if(r<=0)return p;}return ps[0];
 }
 function changeMap(id,arrive){
+  if(MAP)MAP.plats=MAP.plats.filter(p=>!p.temp);walls=[];turrets=[];
   mapId=id;MAP=buildMap(id);
   mobs=[];projs=[];eshots=[];drops=[];fx=[];parts=[];nums=[];bolts=[];texts=[];amb=[];shake=0;
   const portal=MAP.portals.find(p=>arrive==='L'?p.side==='L':p.side==='R')||MAP.portals[0];
@@ -850,7 +981,7 @@ function updatePlayer(dt){
   if(!P.onGround){P.vy=Math.min(14,P.vy+.55);}
   P.x=clamp(P.x+P.vx,20,MAP.w-20);P.y+=P.onGround?0:P.vy;
   if(!P.onGround&&P.vy>=0){const pl=physicsLand(P,prevY,P.drop);if(pl){P.y=pl.y;P.vy=0;P.onGround=true;P.plat=pl;}}
-  if(P.onGround&&P.plat&&(P.x<P.plat.x||P.x>P.plat.x+P.plat.w)){P.onGround=false;P.vy=0;}
+  if(P.onGround&&P.plat&&(P.plat.gone||P.x<P.plat.x||P.x>P.plat.x+P.plat.w)){P.onGround=false;P.vy=0;}
   if(P.y>H+50){P.y=GROUND;P.onGround=true;P.plat=MAP.plats[0];}
   // casting
   if(held('cast')){let a=P.dir>0?0:Math.PI;if(U)a=P.dir>0?-.6:Math.PI+.6;else if(D&&!P.onGround)a=P.dir>0?.6:Math.PI-.6;castWand(a);}
@@ -922,7 +1053,9 @@ function updateProjs(dt){
         if(m.dead||o.hit.has(m))continue;
         const top=m.y+m.jy-m.h;
         if(o.x>m.x-m.w/2-o.r&&o.x<m.x+m.w/2+o.r&&o.y>top-o.r&&o.y<m.y+m.jy+o.r){
-          o.hit.add(m);hitMob(m,o.dmg,o.elem,o.crit,o.vx,o);if(o.leech)S.mp=Math.min(maxMP(),S.mp+1);
+          o.hit.add(m);if(o.dmg>0)hitMob(m,o.dmg,o.elem,o.crit,o.vx,o);if(o.leech)S.mp=Math.min(maxMP(),S.mp+1);
+          if(o.util==='swap'){swapWith(m,o.w);o.done=true;kill(o);break;}
+          if(o.util){kill(o);break;}
           if(o.trigger==='hit')firePayload(o);
           if(o.kind==='meteor'){kill(o);break;}
           if(o.pierce>0)o.pierce--;else{kill(o);break;}
@@ -942,13 +1075,15 @@ function updateProjs(dt){
 function kill(o){
   if(o.dead)return;o.dead=true;
   if(o.trigger&&!o.fired)firePayload(o);
+  if(o.util&&!o.done)utilEnd(o);
   if(o.explode)explosion(o.x,o.y,o.explode*(o.r>12?1.2:1),o.dmg*.8,o.elem?ELEM[o.elem].c:'#ffb347');
   else burst(o.x,o.y,o.elem?ELEM[o.elem].c:o.c.color,5);
 }
 function updateDrops(dt){
   for(const d of drops){
     d.t+=dt;
-    if(!d.onG){const py=d.y;d.vy=Math.min(10,d.vy+.4);d.x+=d.vx;d.y+=d.vy;if(d.vy>0){const pl=physicsLand(d,py,null);if(pl){d.y=pl.y;d.onG=true;}}}
+    if(!d.onG){const py=d.y;d.vy=Math.min(10,d.vy+.4);d.x+=d.vx;d.y+=d.vy;if(d.vy>0){const pl=physicsLand(d,py,null);if(pl){d.y=pl.y;d.onG=true;d.plat=pl;}}}
+    else if(d.plat&&d.plat.gone){d.onG=false;d.plat=null;}
     if(d.t>.4&&Math.abs(d.x-player.x)<24&&d.y>player.y-56&&d.y<player.y+6)pickup(d);
   }
   drops=drops.filter(d=>!d.gone&&d.t<60);
@@ -971,7 +1106,7 @@ function update(dt){
   S.mp=Math.min(maxMP(),S.mp+mpRegen()*dt);S.hp=Math.min(maxHP(),S.hp+(.6+S.lv*.12)*dt);
   for(const w of S.wands){if(w.cool>0)w.cool-=dt;if(w.rech>0)w.rech-=dt;}
   updatePlayer(dt);if(paused)return;
-  updateMobs(dt);updateProjs(dt);updateDrops(dt);
+  updateMobs(dt);updateProjs(dt);updateUtil(dt);updateDrops(dt);
   for(const p of parts){p.x+=p.vx;p.y+=p.vy;p.vy+=.05;p.life-=dt;}parts=parts.filter(p=>p.life>0);if(parts.length>600)parts.splice(0,parts.length-600);
   for(const f of fx)f.t+=dt;fx=fx.filter(f=>f.t<(f.type==='ring'?1:.4));
   for(const n of nums)n.t+=dt;nums=nums.filter(n=>n.t<1);
@@ -1298,7 +1433,9 @@ function drawWorld(){
   drawGround();
   g.save();g.translate(-Math.round(camX),0);
   for(const r of MAP.ropes)if(r.x>camX-20&&r.x<camX+W+20)K.ready?kLadder(r):drawRope(r);
-  for(const p of MAP.plats){if(p.ground||p.x>camX+W||p.x+p.w<camX)continue;if(K.ready)kPlat(p);else if(p.cv)g.drawImage(p.cv,p.x-12,p.y-14,p.w+24,90);}
+  for(const p of MAP.plats){if(p.ground||p.x>camX+W||p.x+p.w<camX)continue;if(p.temp)g.globalAlpha=p.t<1?.45+.35*Math.sin(time*24):.9;
+    if(p.temp&&!K.ready){g.fillStyle='#ffe9a8';rr(p.x,p.y-4,p.w,14,6);g.fill();}
+    else if(K.ready)kPlat(p);else if(p.cv)g.drawImage(p.cv,p.x-12,p.y-14,p.w+24,90);g.globalAlpha=1;}
   if(K.ready)kDeco();
   for(const po of MAP.portals)drawPortal(po);
   for(const n of MAP.npcs){if(WIZ.img)drawWiz(wizTint(n.tint),Math.floor(time*1.6+n.x)&1,n.x,GROUND,n.x<player.x?1:-1);else drawChar(n.x,GROUND,n.x<player.x?1:-1,n,0,false);
@@ -1307,8 +1444,11 @@ function drawWorld(){
       else{const b=Math.sin(time*3)*3;txt('!',n.x+12,GROUND-82+b,22,'#ffcf4a',OL,'center',4);}});
   }
   for(const d of drops)drawDrop(d);
+  drawTurrets();
   for(const m of mobs)drawMob(m);
+  drawWalls();
   drawPlayer();
+  drawSpirits();drawShield();
   g.globalCompositeOperation='lighter';
   for(const p of parts){const a=clamp(p.life*2.2,0,1);drawGlow(p.c,p.x,p.y,p.s*2.2,a);}
   for(const o of projs)drawProj(o);
@@ -1323,6 +1463,9 @@ function drawWorld(){
     if(f.type==='hit'){const k=f.t/.2;if(k<1){g.strokeStyle=`rgba(255,240,200,${1-k})`;g.lineWidth=2.5;for(let i=0;i<6;i++){const a=f.a+i*Math.PI/3,r1=6+k*10,r2=12+k*22;g.beginPath();g.moveTo(f.x+Math.cos(a)*r1,f.y+Math.sin(a)*r1);g.lineTo(f.x+Math.cos(a)*r2,f.y+Math.sin(a)*r2);g.stroke();}drawGlow('#fff0c0',f.x,f.y,18*(1-k),1-k);}}
     if(f.type==='ring'){const k=f.t;g.strokeStyle=`rgba(255,207,74,${1-k})`;g.lineWidth=4;g.beginPath();g.ellipse(player.x,player.y-10,20+k*70,6+k*18,0,0,7);g.stroke();
       for(let i=0;i<8;i++){const a=i/8*Math.PI*2+k*2;drawGlow('#ffcf4a',player.x+Math.cos(a)*(20+k*60),player.y-30-k*60+Math.sin(a)*10,8,1-k);}}
+    if(f.type==='heal'){const k=f.t/.4;drawGlow('#fff2a8',f.x,f.y,f.r*.7,(1-k)*.55);
+      g.strokeStyle=`rgba(255,236,150,${1-k})`;g.lineWidth=4;g.beginPath();g.ellipse(f.x,f.y,f.r*(.35+k*.65),f.r*(.35+k*.65)*.55,0,0,7);g.stroke();
+      for(let i=0;i<10;i++){const a=i/10*Math.PI*2+k*2;drawGlow('#ffe9a0',f.x+Math.cos(a)*f.r*k,f.y+Math.sin(a)*f.r*k*.55-k*20,8,1-k);}}
     if(f.type==='shock'){const k=f.t/.4;g.strokeStyle=`rgba(255,176,112,${1-k})`;g.lineWidth=6;g.beginPath();g.ellipse(f.x,f.y,40+k*240,8+k*16,0,0,7);g.stroke();}
   }
   g.globalCompositeOperation='source-over';
@@ -1503,7 +1646,7 @@ function drawPotion(x,y,k){
   g.fillStyle='rgba(255,255,255,.75)';g.beginPath();g.ellipse(x-3,y,1.6,3,.4,0,7);g.fill();
 }
 function drawCardIcon(x,y,s,c){
-  const col={proj:'#d0524c',mod:'#3a7fc2',multi:'#cf9d1a',trig:'#9b5bc0'}[cardClass(c)];
+  const col={proj:'#d0524c',mod:'#3a7fc2',multi:'#cf9d1a',trig:'#9b5bc0',util:'#3fae6a'}[cardClass(c)];
   const gr=g.createRadialGradient(x+s*.4,y+s*.35,1,x+s/2,y+s/2,s*.75);gr.addColorStop(0,shadeHex(col,-.35));gr.addColorStop(1,'#10132a');
   g.fillStyle=gr;rr(x,y,s,s,4);g.fill();g.strokeStyle=col;g.lineWidth=2;rr(x+1,y+1,s-2,s-2,4);g.stroke();
   txt(c.ab,x+s/2,y+s/2+1,s*.55,'#fff','rgba(0,0,0,.5)','center',2);
@@ -1663,6 +1806,7 @@ function drawHUD(){
   if(jobPending()){g.font=`11px ${FONT}`;const jx=20+g.measureText(jobName()).width;g.fillStyle='#ff9ad8';rr(jx,by+27,34,13,4);g.fill();txt('전직 J',jx+17,by+34,9,'#2a0a20');}
   if(S.apFree>0){g.font=`26px ${FONT}`;const ax=Math.min(70,42+g.measureText(String(S.lv)).width);g.fillStyle='#ffcf4a';rr(ax,by+4,24,13,4);g.fill();txt('AP',ax+12,by+11,10,'#2a1d05');}
   bar2(96,by+7,300,'HP',S.hp,maxHP(),'#ff5a5a','#b02a2a');
+  if(player.shield>0){g.fillStyle='#7fe3ff';g.fillRect(98,by+18,296*clamp(player.shield/maxHP(),0,1),3);}
   bar2(96,by+24,300,'MP',S.mp,maxMP(),'#5aa8ff','#2a58b0');
   txt(`메소 ${S.meso.toLocaleString()}`,420,by+15,15,'#ffd86a',null,'left');
   txt(`Q 빨간 포션 ${S.pot.hp}   E 파란 포션 ${S.pot.mp}`,420,by+33,13,'#e8e3d6',null,'left');
@@ -1911,6 +2055,7 @@ const GUIDE=[
   '<em>수정자</em>(파란 테두리)는 바로 뒤에 시전되는 투사체를 강화해요. 예를 들어 [데미지 증가][매직 클로] 순서로 놓으면 강한 마력탄 한 발이 나가요.',
   '<em>멀티캐스트</em>(금색 테두리)는 다음 카드 여러 장을 한 번에 쏘게 해요. [더블 캐스트][파이어 애로우][아이스 샤드]처럼 써 보세요.',
   '<em>트리거</em>(보라 테두리)는 맞힌 자리에서 다음 카드를 시전해요. [트리거 볼트][부채꼴 캐스트][스파크][스파크][스파크]는 적중 지점에서 불꽃이 퍼져요.',
+  '<em>유틸</em>(초록 테두리) 카드도 덱에 끼워 써요. 텔레포트, 스왑, 마법 벽, 발판, 정령, 포탑, 보호막, 마나 회수, 그리고 나는 회복하고 적은 때리는 <em>힐</em>이 있어요. [트리거 볼트][텔레포트 볼트]처럼 섞으면 맞힌 곳으로 순간이동해요.',
   '원소를 섞으면 연계가 일어나요. 얼린 적에게 <em>화염</em>을 맞히면 융해, <em>전격</em>을 맞히면 파쇄! 불타는 적에게 냉기나 전격을 맞히면 폭발해요.',
   'Lv.10이 되면 <em>전직</em>할 수 있어요. 화염, 냉기, 전격, 독 중 하나를 골라 그 원소와 연계를 강화하고, Lv.30에는 대마도사가 됩니다. 장비와 AP는 <em>C 키</em>, 전직은 <em>J 키</em>예요.',
   '오른쪽 포털로 나가면 사냥터예요. 초록 들판, 깊은 숲, 노을 사막, 얼음 유적을 지나면 강철 게 킹이 기다리고 있어요. 행운을 빌어요!',
