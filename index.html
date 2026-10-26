@@ -120,6 +120,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
         <kbd>I / K / Tab</kbd><span>마법서: 카드를 지팡이 슬롯에 배치</span>
         <kbd>C</kbd><span>캐릭터: 능력치(AP) 분배, 장비</span>
         <kbd>J</kbd><span>전직 (Lv.10, Lv.30)</span>
+        <kbd>L</kbd><span>퀘스트 목록</span>
         <kbd>Q / E</kbd><span>빨간 포션 / 파란 포션</span>
         <kbd>M</kbd><span>모든 소리 켜기/끄기</span>
         <kbd>N</kbd><span>음악만 켜기/끄기</span>
@@ -417,7 +418,7 @@ function freshSave(){
   return {lv:1,exp:0,meso:120,hp:60,mp:80,pot:{hp:4,mp:4},cur:0,map:0,
     wands:[mkWand('견습 마법봉',4,.2,.45,4,1,['bolt','bolt',null,null],'#9fd8ff',0)],
     bag:['energy','dmgup','double','heal'],
-    ap:{int:4,luk:4,wis:4},apFree:0,equip:{hat:null,robe:null,shoes:null,ring:null},gear:[],job:null,job2:false};
+    ap:{int:4,luk:4,wis:4},apFree:0,equip:{hat:null,robe:null,shoes:null,ring:null},gear:[],job:null,job2:false,q:{a:{},d:{}}};
 }
 function mkWand(name,slots,delay,recharge,spread,casts,cards,tip,tier){
   const c=(cards||[]).slice(0,slots);while(c.length<slots)c.push(null);
@@ -471,6 +472,7 @@ function ensureSave(d){
   d.equip=d.equip||{hat:null,robe:null,shoes:null,ring:null};
   d.gear=d.gear||[];
   d.job=d.job||null;d.job2=d.job2||false;
+  d.q=d.q||{a:{},d:{}};
   return d;
 }
 let ST=null;
@@ -708,6 +710,7 @@ addEventListener('keydown',e=>{
   if(['KeyI','KeyK','Tab'].includes(e.code)){if(open==='book')closeAll();else if(!open)openBook();return;}
   if(e.code==='KeyC'){if(open==='char')closeAll();else if(!open)openChar();return;}
   if(e.code==='KeyJ'){if(open==='shop')closeAll();else if(!open)openJob();return;}
+  if(e.code==='KeyL'){if(open==='shop')closeAll();else if(!open)openQuestLog();return;}
   if(open)return;
   if(e.code.startsWith('Digit')){const n=+e.code.slice(5)-1;if(S.wands[n]){S.cur=n;log(`${S.wands[n].name} 장착`);}}
   if(e.code==='KeyQ')usePotion('hp');
@@ -746,7 +749,7 @@ function num(x,y,val,kind,stackKey){
   if(stackKey){const now=time;if(stackKey._ns&&now-stackKey._nsT<.35)off=stackKey._ns++;else{stackKey._ns=1;off=0;}stackKey._nsT=now;}
   nums.push({x:x+rand(-6,6),y:y-off*24,val,kind,t:0});
 }
-function combo(m,txt){sfx('combo');texts.push({x:m.x,y:m.y-m.h-30,txt,t:0,c:'#ffe65a',big:true});}
+function combo(m,txt){sfx('combo');questEvent('combo');texts.push({x:m.x,y:m.y-m.h-30,txt,t:0,c:'#ffe65a',big:true});}
 
 // ---------- casting (Noita-style deck)
 function hasMore(w){for(let i=w.ptr;i<w.cards.length;i++)if(w.cards[i])return true;return false;}
@@ -1005,7 +1008,7 @@ function explosion(x,y,r,dmg,color){
 function burst(x,y,c,n){for(let i=0;i<n;i++){const a=rand(Math.PI*2),s=rand(1,4.5);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:rand(.3,.7),c,s:rand(2,4)});}}
 function killMob(m){
   m.dead=true;m.fade=.6;
-  const T=MOBS[m.type];gainExp(T.exp*(m.elite?4:1));
+  const T=MOBS[m.type];gainExp(T.exp*(m.elite?4:1));questKill(m);
   if(isMaster('fire')&&m.burn>0)explosion(m.x,m.y-m.h/2,80,12+S.lv*1.5,'#ff7a2f');
   if(isMaster('poison')&&m.poison>0)makeProj({id:'poison',payload:null},newMods(),m.x-50,m.y-20,0,{});
   const n=m.boss?14:m.elite?4:1;for(let i=0;i<n;i++)dropItem('meso',m.x+rand(-30,30),m.y-20,irand(T.meso[0],T.meso[1]));
@@ -1276,6 +1279,7 @@ function updateDrops(dt){
 }
 function pickup(d){
   if(d.kind==='meso'){S.meso+=d.val;sfx('coin');log(`메소 +${d.val}`,'#ffd86a');}
+  else if(d.kind==='qitem'){const q=QMAP[d.val];if(qActive(q.id)&&!qDone(q)){qAdd(q);const[c,n]=qProgress(q);sfx('item');log(`${q.goal.item} ${c}/${n}`,'#bde0ff');}}
   else if(d.kind==='hp'||d.kind==='mp'){S.pot[d.kind]++;sfx('coin');log(d.kind==='hp'?'빨간 포션 획득':'파란 포션 획득','#ff9a9a');}
   else if(d.kind==='card'){const i=S.bag.indexOf(null);if(i<0&&S.bag.length>=30){if(!d.warned){d.warned=1;log('카드 가방이 가득 찼습니다','#ff9a8a');}return;}
     if(i>=0)S.bag[i]=d.val;else S.bag.push(d.val);sfx('item');log(`카드 [${C(d.val).name}] 획득`,'#bde0ff');}
@@ -1781,7 +1785,7 @@ function drawWorld(){
   for(const n of MAP.npcs){if(NPCI.complete&&NPCI.naturalWidth)drawNpc(n);else if(WIZ.img)drawWiz(wizTint(n.tint),Math.floor(time*1.6+n.x)&1,n.x,GROUND,n.x<player.x?1:-1);else drawChar(n.x,GROUND,n.x<player.x?1:-1,n,0,false);
     defer(()=>{nameTag(n.name,n.x,GROUND+14,'#ffe27a');
       if(Math.abs(n.x-player.x)<44){g.fillStyle='#fff';rr(n.x-30,GROUND-104,60,24,8);g.fill();g.strokeStyle=OL;g.lineWidth=1.5;g.stroke();txt('↑ 대화',n.x,GROUND-92,14,'#1a2042');}
-      else{const b=Math.sin(time*3)*3;txt('!',n.x+14,GROUND-90+b,22,'#ffcf4a',OL,'center',4);}});
+      else{const mk=npcMark(n),b=Math.sin(time*3)*3;if(mk)txt(mk==='turnin'?'?':mk==='avail'?'!':'…',n.x+14,GROUND-90+b,mk==='active'?18:24,mk==='active'?'#c8c8d8':'#ffcf4a',OL,'center',4);}});
   }
   for(const d of drops)drawDrop(d);
   drawTurrets();
@@ -1832,6 +1836,8 @@ function drawDrop(d){
     g.strokeStyle='#a87a12';g.lineWidth=1.2;g.beginPath();g.arc(0,0,4.5,0,7);g.stroke();g.restore();
   } else if(d.kind==='hp'||d.kind==='mp')drawPotion(x,y,d.kind);
   else if(d.kind==='card'){const c=C(d.val);g.globalCompositeOperation='lighter';drawGlow(c.element?ELEM[c.element].c:'#c8b0ff',x,y,26,.5+Math.sin(d.t*5)*.2);g.globalCompositeOperation='source-over';drawCardIcon(x-11,y-12,22,c);}
+  else if(d.kind==='qitem'){g.globalCompositeOperation='lighter';drawGlow('#ffcf4a',x,y,22,.55+Math.sin(d.t*6)*.2);g.globalCompositeOperation='source-over';
+    const ic=iconCanvas(14);if(ic){const pv=g.imageSmoothingEnabled;g.imageSmoothingEnabled=false;g.drawImage(ic,Math.round(x-16),Math.round(y-20),32,32);g.imageSmoothingEnabled=pv;}}
   else if(d.kind==='gear'){const it=d.val;g.globalCompositeOperation='lighter';drawGlow(RARITY[it.rar].c,x,y,30,.45+Math.sin(d.t*5)*.2);g.globalCompositeOperation='source-over';
     const ic=iconCanvas(it.icon,it.hue);if(ic){const pv=g.imageSmoothingEnabled;g.imageSmoothingEnabled=false;g.drawImage(ic,Math.round(x-24),Math.round(y-30),48,48);g.imageSmoothingEnabled=pv;}}
   else if(d.kind==='wand'){g.globalCompositeOperation='lighter';drawGlow('#ffcf4a',x,y,34,.45+Math.sin(d.t*5)*.2);drawGlow(d.val.tip,x+8,y-14,14,.9);g.globalCompositeOperation='source-over';
@@ -2137,6 +2143,11 @@ function drawHUD(){
   g.fillStyle='#7ae07a';for(const n of MAP.npcs)g.fillRect(ox+n.x*sx-1.5,oy+(GROUND-10)*sy,3,4);
   g.fillStyle='#ff5a5a';for(const m of mobs)if(!m.dead)g.fillRect(ox+m.x*sx-1.5,oy+(m.y-8)*sy,m.boss?6:3,m.boss?6:3);
   g.fillStyle='#ffe23a';g.fillRect(ox+player.x*sx-2,oy+(player.y-12)*sy,4,5);
+  // quest tracker
+  {const act=Object.keys(S.q.a).slice(0,4);if(act.length){const qx=W-310,qy=90,hh=18+act.length*17;
+    g.fillStyle='rgba(12,15,32,.6)';rr(qx,qy,300,hh,8);g.fill();txt('퀘스트 (L)',qx+10,qy+10,11,'#a8aecd',null,'left');
+    act.forEach((id,i)=>{const q=QMAP[id],[c,n]=qProgress(q),dn=c>=n;txt(`${dn?'✓ ':''}${q.title}`,qx+10,qy+27+i*17,12,dn?'#ffcf4a':'#f3eedf',null,'left');
+      txt(dn?'보고하기':`${c}/${n}`,qx+290,qy+27+i*17,12,dn?'#ffcf4a':'#bde0ff',null,'right');});}}
   // wand panel
   const w=wand(),px=W-310,py=10,cs=24;
   g.fillStyle='rgba(12,15,32,.78)';rr(px,py,300,74,8);g.fill();g.strokeStyle='#c9a24a';rr(px,py,300,74,8);g.stroke();
@@ -2158,7 +2169,7 @@ function drawHUD(){
   bar2(96,by+24,300,'MP',S.mp,maxMP(),'#5aa8ff','#2a58b0');
   txt(`메소 ${S.meso.toLocaleString()}`,420,by+15,15,'#ffd86a',null,'left');
   txt(`Q 빨간 포션 ${S.pot.hp}   E 파란 포션 ${S.pot.mp}`,420,by+33,13,'#e8e3d6',null,'left');
-  txt('I 마법서   C 캐릭터   1~4 지팡이   P 화면',W-14,by+24,12,'#a8aecd',null,'right');
+  txt('I 마법서  C 캐릭터  L 퀘스트  P 화면',W-14,by+24,12,'#a8aecd',null,'right');
   // exp
   const need=needExp(S.lv),ek=S.exp/need;g.fillStyle='#2a2a1a';g.fillRect(0,H-8,W,8);g.fillStyle='#e8d23a';g.fillRect(0,H-8,W*ek,8);
   g.font=`10px ${FONT}`;txt(`EXP ${S.exp} / ${need} (${(ek*100).toFixed(1)}%)`,W/2,H-4,10,'#fff','#000','center',3);
@@ -2358,10 +2369,109 @@ function renderChar(){
   renderCharExtra();
 }
 
+// ---------- quests: Pio runs the main story, Luna and Dor hand out repeatable jobs
+// goal types: kill (mob or list), item (drops from mob list or '*'), combo, elite, deck (cards in current wand), job
+const QUESTS=[
+  {id:'q1',npc:'guide',lv:1,title:'첫 사냥',talk:'초록 들판의 초록 꼬마들이 밭을 망치고 있어요. 10마리만 혼내 주세요!',goal:{type:'kill',mob:'snail',n:10},reward:{exp:60,meso:150,pot:3}},
+  {id:'q2',npc:'guide',lv:2,req:'q1',title:'마법서 펼치기',talk:'I 키로 마법서를 열고, 지팡이에 카드를 3장 이상 꽂아 보세요. 카드 순서대로 마법이 나가요.',goal:{type:'deck',n:3},reward:{exp:40,card:0}},
+  {id:'q3',npc:'guide',lv:4,req:'q2',title:'갈라지는 골칫거리',talk:'들판에 몸이 둘로 갈라지는 분열 젤리가 나타났어요. 8마리를 처치해 주세요.',goal:{type:'kill',mob:'splitter',n:8},reward:{exp:150,meso:300,card:1}},
+  {id:'q4',npc:'guide',lv:6,req:'q3',title:'깊은 숲으로',talk:'깊은 숲에 독을 뱉는 독침 꼬마가 늘었대요. 10마리를 처치해 주세요.',goal:{type:'kill',mob:'spitter',n:10},reward:{exp:400,gear:1}},
+  {id:'q5',npc:'guide',lv:10,req:'q4',title:'전직의 길',talk:'이제 전직할 때예요! J 키를 누르거나 저에게 말을 걸어 원소 계열을 고르세요.',goal:{type:'job'},reward:{meso:600,card:2}},
+  {id:'q6',npc:'guide',lv:12,req:'q5',title:'노을 너머',talk:'노을 사막의 돌격병들이 길을 막고 있어요. 돌진하기 전에 "!"가 뜨니 피해서 12마리를 쓰러뜨려 주세요.',goal:{type:'kill',mob:'charger',n:12},reward:{exp:1500,wand:2}},
+  {id:'q7',npc:'guide',lv:16,req:'q6',title:'얼음 유적의 수수께끼',talk:'얼음 유적의 서리 박쥐가 품은 얼음 핵이 필요해요. 10개를 모아 주세요. 박쥐는 냉기에 강하답니다.',goal:{type:'item',mob:['frostbat'],item:'얼음 핵',n:10,rate:.4},reward:{exp:3000,gear:3}},
+  {id:'q8',npc:'guide',lv:22,req:'q7',title:'강철 게 킹',talk:'모든 소란의 원흉, 강철 게 킹을 쓰러뜨려 주세요! 얼음 유적 오른쪽 끝에 둥지가 있어요.',goal:{type:'kill',mob:'kingmush',n:1},reward:{exp:6000,meso:3000,gear:4,rar:2}},
+  {id:'l1',npc:'cards',lv:3,rep:1,title:'반짝이는 마력 가루',talk:'카드를 만들려면 마력 가루가 필요해요. 아무 몬스터에게서나 8개만 모아 줄래요?',goal:{type:'item',mob:'*',item:'마력 가루',n:8,rate:.25},reward:{card:1,card2:1,meso:100}},
+  {id:'l2',npc:'cards',lv:8,rep:1,title:'원소 연구',talk:'원소 연계를 연구하고 있어요. 융해나 과부하 같은 연계를 5번 일으켜 보여 주세요!',goal:{type:'combo',n:5},reward:{card:2,meso:300}},
+  {id:'d1',npc:'wands',lv:5,rep:1,title:'튼튼한 재료',talk:'노랑 꼬마의 헬멧 조각이 좋은 재료라네. 10개 가져오게.',goal:{type:'item',mob:['mush'],item:'헬멧 조각',n:10,rate:.4},reward:{gear:'lv',rar:1}},
+  {id:'d2',npc:'wands',lv:12,rep:1,title:'드론 부품',talk:'드릴 드론과 폭탄 드론의 부품 12개면 쓸 만한 지팡이를 깎아 주지.',goal:{type:'item',mob:['stump','bomber'],item:'드론 부품',n:12,rate:.35},reward:{wand:3}},
+  {id:'d3',npc:'wands',lv:8,rep:1,title:'정예 사냥꾼',talk:'금빛으로 빛나는 정예 몬스터 3마리를 잡아 오게. 실력을 보지.',goal:{type:'elite',n:3},reward:{gear:'lv',rar:2,meso:500}},
+];
+const QMAP=Object.fromEntries(QUESTS.map(q=>[q.id,q]));
+const MAX_QUESTS=5;
+const qActive=id=>S.q.a[id]!==undefined;
+function qProgress(q){
+  const n=q.goal.n||1;
+  if(q.goal.type==='deck')return[Math.min(n,wand().cards.filter(Boolean).length),n];
+  if(q.goal.type==='job')return[S.job?1:0,1];
+  return[Math.min(n,S.q.a[q.id]||0),n];
+}
+const qDone=q=>{const[c,n]=qProgress(q);return c>=n;};
+const qAvail=q=>!qActive(q.id)&&S.lv>=q.lv&&(!q.req||S.q.d[q.req])&&(q.rep||!S.q.d[q.id]);
+function qState(q){if(qActive(q.id))return qDone(q)?'turnin':'active';return qAvail(q)?'avail':null;}
+function npcMark(n){
+  const sts=QUESTS.filter(q=>q.npc===n.kind).map(qState);
+  return sts.includes('turnin')?'turnin':sts.includes('avail')?'avail':sts.includes('active')?'active':null;
+}
+const goalText=q=>{const g=q.goal,m=Array.isArray(g.mob)?g.mob:[g.mob];
+  return g.type==='kill'?`${m.map(t=>MOBS[t].name).join('·')} 처치`:g.type==='item'?`${g.item} 모으기${g.mob==='*'?' (모든 몬스터)':` (${m.map(t=>MOBS[t].name).join('·')})`}`:
+    g.type==='combo'?'원소 연계 일으키기':g.type==='elite'?'정예 몬스터 처치':g.type==='deck'?'현재 지팡이에 카드 꽂기':'전직하기';};
+function rewardText(r){
+  const out=[];if(r.exp)out.push(`경험치 ${r.exp}`);if(r.meso)out.push(`${r.meso} 메소`);if(r.pot)out.push(`포션 ${r.pot}개씩`);
+  if(r.card!==undefined)out.push(`${r.card}단계 카드${r.card2!==undefined?' 2장':''}`);
+  if(r.gear!==undefined)out.push(`${r.gear==='lv'?'레벨에 맞는':r.gear+'단계'} 장비${r.rar?' (높은 등급)':''}`);
+  if(r.wand!==undefined)out.push(`${r.wand}단계 지팡이`);return out.join(', ');
+}
+function qAdd(q,k=1){if(!qActive(q.id)||qDone(q))return;S.q.a[q.id]+=k;const[c,n]=qProgress(q);
+  if(c>=n){log(`퀘스트 [${q.title}] 완료! ${NPC_NAME[q.npc]}에게 돌아가세요`,'#ffcf4a');sfx('upgrade');}}
+const NPC_NAME={guide:'안내원 피오',cards:'마법상점 루나',wands:'지팡이 장인 도르'};
+function questKill(m){
+  for(const id in S.q.a){const q=QMAP[id],g=q.goal;
+    if(g.type==='kill'&&(Array.isArray(g.mob)?g.mob.includes(m.type):g.mob===m.type))qAdd(q);
+    else if(g.type==='elite'&&m.elite)qAdd(q);
+    else if(g.type==='item'&&!qDone(q)&&(g.mob==='*'||g.mob.includes(m.type))&&Math.random()<g.rate)dropItem('qitem',m.x,m.y-20,q.id);}
+}
+function questEvent(type){for(const id in S.q.a)if(QMAP[id].goal.type===type)qAdd(QMAP[id]);}
+function giveOrDrop(kind,val){
+  if(kind==='card'){const i=S.bag.indexOf(null);if(i>=0)S.bag[i]=val;else if(S.bag.length<30)S.bag.push(val);else dropItem('card',player.x,player.y-30,val);}
+  else if(kind==='gear'){if(S.gear.length<24)S.gear.push(val);else dropItem('gear',player.x,player.y-30,val);}
+  else if(kind==='wand'){if(S.wands.length<4)S.wands.push(val);else dropItem('wand',player.x,player.y-30,val);}
+}
+function turnIn(q){
+  if(!qDone(q))return;const r=q.reward;delete S.q.a[q.id];S.q.d[q.id]=(S.q.d[q.id]||0)+1;
+  if(r.meso)S.meso+=r.meso;if(r.pot){S.pot.hp+=r.pot;S.pot.mp+=r.pot;}
+  if(r.card!==undefined)giveOrDrop('card',rollCard(r.card,r.card>=2));if(r.card2!==undefined)giveOrDrop('card',rollCard(r.card2,r.card2>=2));
+  if(r.gear!==undefined)giveOrDrop('gear',genGear(r.gear==='lv'?Math.min(4,Math.floor(S.lv/6)):r.gear,null,(r.rar||0)*.12));
+  if(r.wand!==undefined)giveOrDrop('wand',genWand(r.wand));
+  if(r.exp)gainExp(r.exp);
+  sfx('job');log(`퀘스트 [${q.title}] 보상: ${rewardText(r)}`,'#ffcf4a');save();
+}
+function npcDefault(n){if(n.kind==='cards')renderCardShop();else if(n.kind==='wands')renderWandShop();else if(jobPending())renderJob();else renderGuide(0);}
+function questCard(q,st){
+  const[c,n]=qProgress(q);
+  const btn=st==='avail'?`<button class="btn small" data-qaccept="${q.id}" ${Object.keys(S.q.a).length>=MAX_QUESTS?'disabled':''}>수락</button>`:
+    st==='turnin'?`<button class="btn small" data-qturn="${q.id}">완료하고 보상 받기</button>`:`<span class="label">진행 중 ${c}/${n}</span>`;
+  return`<div class="item" style="align-items:flex-start"><div class="grow"><div class="nm">${q.rep?'':'<span class="price">메인</span> '}${q.title} <span class="tagline">Lv.${q.lv}</span></div>
+    <div class="ds" style="color:var(--text);margin:4px 0">${q.talk}</div>
+    <div class="ds">목표: ${goalText(q)} ${c}/${n} · 보상: ${rewardText(q.reward)}</div></div>${btn}</div>`;
+}
+function renderNpcQuests(n){
+  const list=QUESTS.filter(q=>q.npc===n.kind).map(q=>[q,qState(q)]).filter(([,st])=>st);
+  const def=n.kind==='cards'?'카드 상점':n.kind==='wands'?'지팡이·장비 상점':jobPending()?'전직하기':'이야기 듣기';
+  $('shop-title').textContent=n.name;
+  $('shop-body').innerHTML=`<div class="shop-list" style="grid-template-columns:1fr">${list.map(([q,st])=>questCard(q,st)).join('')||'<div class="tagline">지금 줄 수 있는 일이 없어요.</div>'}</div>
+    <div class="row"><span class="label">진행 중 퀘스트 ${Object.keys(S.q.a).length}/${MAX_QUESTS}</span><span style="flex:1"></span><button class="btn ghost small" id="npc-def">${def}</button></div>`;
+  $('shop-body').querySelectorAll('[data-qaccept]').forEach(b=>b.onclick=()=>{const q=QMAP[b.dataset.qaccept];if(Object.keys(S.q.a).length>=MAX_QUESTS)return;
+    S.q.a[q.id]=0;sfx('buy');log(`퀘스트 [${q.title}] 수락 · ${goalText(q)}`,'#bde0ff');renderNpcQuests(n);});
+  $('shop-body').querySelectorAll('[data-qturn]').forEach(b=>b.onclick=()=>{turnIn(QMAP[b.dataset.qturn]);renderNpcQuests(n);});
+  $('npc-def').onclick=()=>npcDefault(n);
+}
+function openQuestLog(){paused=true;$('shop').hidden=false;renderQuestLog();}
+function renderQuestLog(){
+  $('shop-title').textContent='퀘스트';
+  const act=Object.keys(S.q.a).map(id=>QMAP[id]);
+  const avail=QUESTS.filter(qAvail);
+  $('shop-body').innerHTML=`<div class="row"><span class="label">진행 중 ${act.length}/${MAX_QUESTS}</span></div>
+    <div class="shop-list" style="grid-template-columns:1fr">${act.map(q=>{const[c,n]=qProgress(q);return`<div class="item"><div class="grow"><div class="nm">${q.title} <span class="price">${c}/${n}</span>${qDone(q)?' <span class="tagline" style="color:var(--accent)">완료 · '+NPC_NAME[q.npc]+'에게 보고</span>':''}</div>
+      <div class="ds">${goalText(q)} · 보상: ${rewardText(q.reward)}</div></div><button class="btn ghost small" data-qdrop="${q.id}">포기</button></div>`;}).join('')||'<div class="tagline">진행 중인 퀘스트가 없습니다. 머리 위에 ! 가 뜬 NPC에게 말을 걸어 보세요.</div>'}</div>
+    <div class="row"><span class="label">받을 수 있는 퀘스트</span></div>
+    <div class="shop-list" style="grid-template-columns:1fr">${avail.map(q=>`<div class="item"><div class="grow"><div class="nm">${q.title} <span class="tagline">Lv.${q.lv} · ${NPC_NAME[q.npc]}</span></div><div class="ds">${goalText(q)}</div></div></div>`).join('')||'<div class="tagline">지금 받을 수 있는 퀘스트가 없습니다.</div>'}</div>`;
+  $('shop-body').querySelectorAll('[data-qdrop]').forEach(b=>b.onclick=()=>{if(!b.dataset.confirm){b.dataset.confirm=1;b.textContent='정말 포기';return;}delete S.q.a[b.dataset.qdrop];renderQuestLog();});
+}
+
 // shops & npc
 function openNpc(n){
   paused=true;$('shop').hidden=false;$('shop-title').textContent=n.name;
-  if(n.kind==='cards')renderCardShop();else if(n.kind==='wands')renderWandShop();else if(jobPending())renderJob();else renderGuide(0);
+  if(npcMark(n)==='turnin'||npcMark(n)==='avail')renderNpcQuests(n);else npcDefault(n);
 }
 function renderCardShop(){
   const tier=Math.min(3,Math.floor(S.lv/5));
@@ -2405,6 +2515,7 @@ const GUIDE=[
   '<em>트리거</em>(보라 테두리)는 맞힌 자리에서 다음 카드를 시전해요. [트리거 볼트][부채꼴 캐스트][스파크][스파크][스파크]는 적중 지점에서 불꽃이 퍼져요.',
   '<em>유틸</em>(초록 테두리) 카드도 덱에 끼워 써요. 텔레포트, 스왑, 마법 벽, 발판, 정령, 포탑, 보호막, 마나 회수, 그리고 나는 회복하고 적은 때리는 <em>힐</em>이 있어요. [트리거 볼트][텔레포트 볼트]처럼 섞으면 맞힌 곳으로 순간이동해요.',
   '원소를 섞으면 연계가 일어나요. 얼린 적에게 <em>화염</em>을 맞히면 융해, <em>전격</em>을 맞히면 파쇄! 불타는 적에게 냉기나 전격을 맞히면 폭발해요.',
+  '머리 위에 <em>!</em>가 뜬 사람에게 말을 걸면 <em>퀘스트</em>를 받을 수 있어요. 다 하면 <em>?</em>가 떠요. 진행 상황은 오른쪽 위와 <em>L 키</em>로 볼 수 있어요.',
   'Lv.10이 되면 <em>전직</em>할 수 있어요. 화염, 냉기, 전격, 독 중 하나를 골라 그 원소와 연계를 강화하고, Lv.30에는 대마도사가 됩니다. 장비와 AP는 <em>C 키</em>, 전직은 <em>J 키</em>예요.',
   '오른쪽 포털로 나가면 사냥터예요. 초록 들판, 깊은 숲, 노을 사막, 얼음 유적을 지나면 강철 게 킹이 기다리고 있어요. 행운을 빌어요!',
 ];
@@ -2448,7 +2559,7 @@ function start(data){
   S.wands.forEach(w=>{w.ptr=0;w.cool=0;w.rech=0;});
   started=true;$('title').hidden=true;paused=false;
   changeMap(data?clamp(data.map||0,0,MAPS.length-1):0,'L');
-  if(!data){player.x=300;log('안내원 피오에게 ↑ 키로 말을 걸어 보세요.','#ffe27a');log('I 키로 마법서를 열어 카드를 배치할 수 있습니다.','#ffe27a');}
+  if(!data){player.x=300;log('머리 위에 ! 가 뜬 안내원 피오에게 ↑ 키로 말을 걸어 퀘스트를 받으세요.','#ffe27a');log('I 키로 마법서를 열어 카드를 배치할 수 있습니다.','#ffe27a');}
 }
 $('btn-new').onclick=()=>{initAudio();start(null);};
 $('btn-cont').onclick=()=>{initAudio();start(store.get('naple-save'));};
