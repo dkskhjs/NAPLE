@@ -120,6 +120,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
         <kbd>M</kbd><span>소리 켜기/끄기</span>
         <kbd>P</kbd><span>화면 효과 바꾸기 (도트 + 팔레트 / 도트 / 원본)</span>
       </div>
+      <div class="tagline" style="text-align:center">그래픽 일부: Kenney Pixel Platformer (CC0, www.kenney.nl)</div>
       <div class="tagline" style="text-align:center">지팡이는 슬롯의 카드를 왼쪽부터 차례로 시전합니다. 수정자 카드는 다음 투사체를 강화하고, 멀티캐스트는 여러 장을 한 번에 쏩니다. 원소를 섞으면 연계가 터집니다.</div>
       <div class="row c">
         <button class="btn" id="btn-new">새로 시작</button>
@@ -165,6 +166,12 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
 </div>
 <div id="ghost" hidden></div>
 
+<script>
+// Kenney Pixel Platformer tilesheets (CC0) — source PNGs live in assets/kenney/
+const KENNEY={tiles:'data:image/png;base64,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',
+chars:'data:image/png;base64,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',
+bgs:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABIBAMAAABSEeeBAAAABGdBTUEAALGPC/xhBQAAABtQTFRFNuN39Kxm+8l7f/Cly4FeLrCC////3/b1wuPoPFAu6wAAAZlJREFUWMPtlNuJwzAQRQXBBTiogaSCQCoQqAD/qAVHFSQdBJW985SdXWtjQ7JLYO7XtfHcM6OH3W2jjg2dG3IGMIABDGAAAxjAAJ8EuI6XmvDEU9qh39dk8ZR2cruaLN5x7ViTnnnO7CtBPWe6SlBPgBElQc88hvYoAainblG6NOLdDfqi4iuUr/BH6JdCDxA782fol0JPEDvz7oplrMsaf8A41n7uTxjH2s29Gzeqb8i19K2+lPJWQAbA/SMAXRreC0gptQG5BSkvApTWTr8bkHGwDQBmLBzTFwG6RBu9sAz/A8hyCf8G4EMNjuJ/3oM2YPGYwqsJEKPm+z54AXSPI7g2YMwL14CuB1AoNcZpBHAhEKBbBuTZgoj/DRBpAB4hMsB7GALz0rRA6PkZy5SgfgGQ8T1+Br17BAQcJPAEkO8xUwniO/odlVIJWT0A5vtAnWc5ANB7jDwCzwEsAMSUhDBIPhyjATemVILml5LvecJOH5CNquBpDoZ5BSQ3aD5uQZcqYK1iQ6khAxjAAAYwgAEMYAADsL4Ay2H2+fZv0pMAAAAASUVORK5CYII='};
+</script>
 <script>
 (()=>{
 'use strict';
@@ -271,14 +278,15 @@ const cardClass=c=>c.type==='proj'?(c.trigger?'trig':'proj'):c.type;
 
 // ---------- monsters
 const MOBS={
-  snail:{name:'달팽이',lv:1,hp:30,spd:.5,w:34,h:26,exp:4,dmg:6,meso:[2,6],body:'#9bd65e',shell:'#c98a4b'},
-  bluesnail:{name:'파란 달팽이',lv:3,hp:55,spd:.6,w:36,h:28,exp:7,dmg:9,meso:[4,9],body:'#9bd65e',shell:'#4b7fc9'},
-  slime:{name:'슬라임',lv:5,hp:80,spd:.9,w:40,h:34,exp:11,dmg:11,meso:[6,12],hop:true,body:'#5fd3a8'},
-  mush:{name:'주황버섯',lv:8,hp:130,spd:1,w:44,h:44,exp:17,dmg:15,meso:[9,18],hop:true,body:'#f08a2c'},
-  hornmush:{name:'뿔버섯',lv:11,hp:210,spd:1.3,w:46,h:48,exp:26,dmg:19,meso:[12,24],body:'#d9583b'},
-  stump:{name:'고목 그루터기',lv:14,hp:330,spd:.7,w:52,h:50,exp:38,dmg:24,meso:[18,32],body:'#8a5a32'},
-  golem:{name:'돌골렘',lv:18,hp:720,spd:.6,w:66,h:78,exp:80,dmg:32,meso:[35,60],body:'#8d8f99'},
-  kingmush:{name:'버섯왕',lv:24,hp:7000,spd:.8,w:150,h:135,exp:2000,dmg:38,meso:[800,1200],body:'#e6672a',boss:true},
+  snail:{name:'초록 꼬마',lv:1,hp:30,spd:.5,w:40,h:40,exp:4,dmg:6,meso:[2,6],body:'#9bd65e',shell:'#c98a4b'},
+  bluesnail:{name:'파랑 꼬마',lv:3,hp:55,spd:.6,w:40,h:40,exp:7,dmg:9,meso:[4,9],body:'#9bd65e',shell:'#4b7fc9'},
+  slime:{name:'분홍 외눈이',lv:5,hp:80,spd:.9,w:40,h:40,exp:11,dmg:11,meso:[6,12],hop:true,body:'#5fd3a8'},
+  mush:{name:'노랑 꼬마',lv:8,hp:130,spd:1,w:40,h:40,exp:17,dmg:15,meso:[9,18],hop:true,body:'#f08a2c'},
+  hornmush:{name:'밤박쥐',lv:11,hp:210,spd:1.3,w:44,h:34,exp:26,dmg:19,meso:[12,24],body:'#d9583b'},
+  stump:{name:'드릴 드론',lv:14,hp:330,spd:.7,w:40,h:40,exp:38,dmg:24,meso:[18,32],body:'#8a5a32'},
+  golem:{name:'성난 상자',lv:18,hp:720,spd:.6,w:60,h:62,exp:80,dmg:32,meso:[35,60],body:'#8d8f99'},
+  kingmush:{name:'강철 게 킹',lv:24,hp:7000,spd:.8,w:136,h:104,exp:2000,dmg:38,meso:[800,1200],body:'#e6672a',boss:true},
+  imp:{name:'불씨 꼬마',lv:10,hp:120,spd:1.4,w:24,h:30,exp:12,dmg:14,meso:[6,12],hop:true,body:'#f0a030'},
 };
 
 // ---------- maps
@@ -293,10 +301,10 @@ const THEMES={
 const MAPS=[
   {name:'리프 마을',theme:'town',w:1800,town:true,seed:7},
   {name:'초록 들판',rec:'Lv.1~5',theme:'field',w:2600,mobs:['snail','snail','bluesnail','slime'],cap:14,tier:0,seed:11},
-  {name:'버섯 숲',rec:'Lv.5~11',theme:'forest',w:3000,mobs:['slime','mush','mush','hornmush'],cap:16,tier:1,seed:22},
-  {name:'고목 언덕',rec:'Lv.11~16',theme:'hill',w:3000,mobs:['hornmush','stump','stump'],cap:16,tier:2,seed:33},
-  {name:'골렘 유적',rec:'Lv.16~22',theme:'ruins',w:3200,mobs:['stump','golem','golem'],cap:13,tier:3,seed:44},
-  {name:'버섯왕의 둥지',rec:'Lv.22+',theme:'boss',w:1600,boss:'kingmush',tier:3,seed:55},
+  {name:'깊은 숲',rec:'Lv.5~11',theme:'forest',w:3000,mobs:['slime','mush','mush','hornmush'],cap:16,tier:1,seed:22},
+  {name:'노을 사막',rec:'Lv.11~16',theme:'hill',w:3000,mobs:['hornmush','stump','stump'],cap:16,tier:2,seed:33},
+  {name:'얼음 유적',rec:'Lv.16~22',theme:'ruins',w:3200,mobs:['stump','golem','golem'],cap:13,tier:3,seed:44},
+  {name:'강철 게의 둥지',rec:'Lv.22+',theme:'boss',w:1600,boss:'kingmush',tier:3,seed:55},
 ];
 function buildMap(i){
   const m=MAPS[i];if(m.plats)return m;
@@ -316,14 +324,18 @@ function buildMap(i){
       x+=w+130+r()*190;
     }
   } else {plats.push({x:360,y:345,w:200},{x:1260,y:345,w:220});ropes.push({x:450,y1:345,y2:GROUND});}
+  // snap floating platforms to the 36px tile grid, then keep ladders on their platform
+  const T36=v=>Math.round(v/36)*36;
+  for(const p of plats)if(!p.ground){p.x=T36(p.x);p.w=Math.max(72,T36(p.w));}
+  for(const r of ropes){const p=plats.find(q=>!q.ground&&q.y===r.y1&&r.x>=q.x-40&&r.x<=q.x+q.w+40);if(p)r.x=clamp(r.x,p.x+18,p.x+p.w-18);}
   m.plats=plats;m.ropes=ropes;
   m.portals=[];
   if(i>0)m.portals.push({x:70,to:i-1,side:'L'});
   if(i<MAPS.length-1)m.portals.push({x:m.w-70,to:i+1,side:'R'});
   m.npcs=m.town?[
-    {x:640,name:'마법상점 루나',kind:'cards',robe:'#7a4fc0',hat:'#4a2d86',hair:'#f2d06b',long:true,eye:'#8a4fd0',band:'#ff9ac0'},
-    {x:960,name:'안내원 피오',kind:'guide',robe:'#3f8f6a',hat:null,hair:'#6b3d22',cape:'#2a6a4a'},
-    {x:1180,name:'지팡이 장인 도르',kind:'wands',robe:'#8a5a32',hat:null,hair:'#c8c8c8',beard:true},
+    {x:640,name:'마법상점 루나',sc:.62,kind:'cards',robe:'#7a4fc0',hat:'#4a2d86',hair:'#f2d06b',long:true,eye:'#8a4fd0',band:'#ff9ac0'},
+    {x:960,name:'안내원 피오',sc:.62,kind:'guide',robe:'#3f8f6a',hat:null,hair:'#6b3d22',cape:'#2a6a4a'},
+    {x:1180,name:'지팡이 장인 도르',sc:.62,kind:'wands',robe:'#8a5a32',hat:null,hair:'#c8c8c8',beard:true},
   ]:[];
   const d=[];for(let k=0;k<Math.floor(m.w/150);k++)d.push({x:r()*m.w,s:.7+r()*.6,v:r()});
   m.decoSeeds=d;
@@ -466,7 +478,7 @@ function castWand(ang){
   w.cool=Math.max(.05,w.delay+ctx.delay);
   if(!grp.projs.length){if(ctx.skipped&&time-(castWand.warn||0)>2){castWand.warn=time;log('MP가 부족합니다','#8fb8ff');}return;}
   player.castT=.18;sfx('cast');
-  spawnGroup(grp,player.x+player.dir*16,player.y-36,ang,w.spread);
+  spawnGroup(grp,player.x+player.dir*11,player.y-24,ang,w.spread);
 }
 function spawnGroup(grp,x,y,ang,spread){
   const k=grp.projs.length,M=grp.mods;
@@ -572,7 +584,7 @@ function killMob(m){
   if(m.boss){
     dropItem('wand',m.x,m.y-40,genWand(4));
     for(let i=0;i<3;i++)dropItem('card',m.x+rand(-60,60),m.y-30,rollCard(3,true));
-    log('버섯왕을 쓰러뜨렸습니다!','#ffcf4a');banner={t:3,txt:'버섯왕 격파',sub:'전리품을 챙기세요'};
+    log(`${T.name}을 쓰러뜨렸습니다!`,'#ffcf4a');banner={t:3,txt:`${T.name} 격파`,sub:'전리품을 챙기세요'};
   } else {
     if(Math.random()<.09+tier*.01)dropItem('card',m.x,m.y-20,rollCard(tier));
     if(Math.random()<.07)dropItem(Math.random()<.5?'hp':'mp',m.x,m.y-20,1);
@@ -686,7 +698,7 @@ function updatePlayer(dt){
   if(P.y>H+50){P.y=GROUND;P.onGround=true;P.plat=MAP.plats[0];}
   // casting
   if(held('cast')){let a=P.dir>0?0:Math.PI;if(U)a=P.dir>0?-.6:Math.PI+.6;else if(D&&!P.onGround)a=P.dir>0?.6:Math.PI-.6;castWand(a);}
-  else if(mouse.down&&!openOverlay()){const wx=mouse.x+camX,wy=mouse.y;P.dir=wx>=P.x?1:-1;castWand(Math.atan2(wy-(P.y-36),wx-(P.x+P.dir*16)));}
+  else if(mouse.down&&!openOverlay()){const wx=mouse.x+camX,wy=mouse.y;P.dir=wx>=P.x?1:-1;castWand(Math.atan2(wy-(P.y-24),wx-(P.x+P.dir*11)));}
 }
 function updateMobs(dt){
   for(const m of mobs){
@@ -716,7 +728,7 @@ function updateMobs(dt){
     if(m.x<lo){m.x=lo;m.dir=1;}if(m.x>hi){m.x=hi;m.dir=-1;}
     // contact
     const top=m.y+m.jy-m.h;
-    if(Math.abs(player.x-m.x)<m.w/2+10&&player.y>top+6&&player.y-52<m.y+m.jy)hurtPlayer(T.dmg,m.x);
+    if(Math.abs(player.x-m.x)<m.w/2+10&&player.y>top+6&&player.y-36<m.y+m.jy)hurtPlayer(T.dmg,m.x);
   }
   mobs=mobs.filter(m=>!m.dead||m.fade>0);
   if(MAP.mobs){respawnT-=dt;if(respawnT<=0){respawnT=6;const alive=mobs.filter(m=>!m.dead).length;for(let i=alive;i<Math.min(MAP.cap,alive+4);i++)spawnMob(pick(MAP.mobs));}}
@@ -732,7 +744,7 @@ function bossAI(m,dt,stunned){
     m.act=rand(2.2,3.4);const r=Math.random();
     if(r<.35){m.vy=-11;m.jy=-1;m.jumping=true;m.kb=Math.sign(dx)*3.2;}
     else if(r<.65){for(let i=0;i<7;i++){const a=-Math.PI/2+(i-3)*.28;eshots.push({x:m.x,y:m.y-m.h+20,vx:Math.cos(a)*5+Math.sign(dx)*1.2,vy:Math.sin(a)*6,r:8,dmg:22,life:4});}}
-    else if(mobs.filter(x=>!x.dead).length<7){for(let i=0;i<2;i++)spawnMob('mush',MAP.plats[0]);texts.push({x:m.x,y:m.y-m.h-20,txt:'나와라, 버섯들아!',t:0,c:'#ffd6a8'});}
+    else if(mobs.filter(x=>!x.dead).length<7){for(let i=0;i<2;i++)spawnMob('imp',MAP.plats[0]);texts.push({x:m.x,y:m.y-m.h-20,txt:'나와라, 부하들아!',t:0,c:'#ffd6a8'});}
   }
 }
 function updateProjs(dt){
@@ -768,7 +780,7 @@ function updateProjs(dt){
   projs=projs.filter(o=>!o.dead);
   for(const e of eshots){e.vy+=.18;e.x+=e.vx;e.y+=e.vy;e.life-=dt;
     if(e.y>=GROUND){e.life=0;burst(e.x,GROUND-4,'#d9a25a',6);}
-    if(Math.abs(e.x-player.x)<e.r+10&&e.y>player.y-54&&e.y<player.y){hurtPlayer(e.dmg,e.x);e.life=0;}}
+    if(Math.abs(e.x-player.x)<e.r+10&&e.y>player.y-38&&e.y<player.y){hurtPlayer(e.dmg,e.x);e.life=0;}}
   eshots=eshots.filter(e=>e.life>0);
 }
 function kill(o){
@@ -815,6 +827,95 @@ function update(dt){
 }
 
 // ---------- drawing
+// ---------- Kenney "Pixel Platformer" sprites (CC0, www.kenney.nl), embedded as data URIs so canvas reads stay same-origin
+const SHEET={tiles:{ts:18,cols:20},chars:{ts:24,cols:9},bgs:{ts:24,cols:8}};
+const K={ready:false,img:{},themed:{},col:{}};
+(()=>{let n=0;for(const k in SHEET){const im=new Image();im.onload=()=>{K.img[k]=im;if(++n===3)K.ready=true;};im.src=KENNEY[k];}})();
+// set: [single, left, middle, right] one-tile-thick platform pieces; cap: ground top; bg: backdrop strip; sky: plain backdrop tile
+const KT={
+  town:{set:[0,1,2,3],cap:22,bg:[8,9,8,10],sky:0,deco:[124,125,124,128]},
+  field:{set:[0,1,2,3],cap:22,bg:[8,9,10,11],sky:0,deco:[124,125,126,128]},
+  forest:{set:[0,1,2,3],cap:22,bg:[14,15],sky:6,deco:[126,128,129,124]},
+  hill:{set:[40,41,42,43],cap:62,bg:[12,13],sky:4,deco:[127,124,127]},
+  ruins:{set:[80,81,82,83],cap:102,bg:[8,11,10,11],sky:0,deco:[126,145,126]},
+  boss:{set:[40,41,42,43],cap:62,bg:[12,13],sky:4,deco:[128,129]},
+};
+// [hue shift in degrees, saturation multiplier, lightness multiplier]
+const RECOLOR={forest:{tiles:[0,.85,.8],bgs:[-10,.55,.55]},ruins:{tiles:[10,.6,.85],bgs:[60,.6,.62]},boss:{tiles:[-25,.6,.55],bgs:[-35,.45,.33]}};
+function recolor(img,[hs,sm,lm]){
+  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.drawImage(img,0,0);
+  const id=x.getImageData(0,0,c.width,c.height),d=id.data;
+  for(let i=0;i<d.length;i+=4){
+    if(!d[i+3])continue;
+    const r=d[i]/255,gg=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,gg,b),mn=Math.min(r,gg,b);let h=0,s=0,l=(mx+mn)/2;
+    if(mx!==mn){const dd=mx-mn;s=l>.5?dd/(2-mx-mn):dd/(mx+mn);h=mx===r?(gg-b)/dd+(gg<b?6:0):mx===gg?(b-r)/dd+2:(r-gg)/dd+4;h*=60;}
+    h=(h+hs+360)%360;s=clamp(s*sm,0,1);l=clamp(l*lm,0,1);
+    const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q,hk=h/360;
+    const f=t=>{t=(t+1)%1;return t<1/6?p+(q-p)*6*t:t<.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p;};
+    d[i]=Math.round(f(hk+1/3)*255);d[i+1]=Math.round(f(hk)*255);d[i+2]=Math.round(f(hk-1/3)*255);
+  }
+  x.putImageData(id,0,0);return c;
+}
+function themed(k){const key=MAP.theme+k;if(!K.themed[key]){const rc=RECOLOR[MAP.theme]&&RECOLOR[MAP.theme][k];K.themed[key]=rc?recolor(K.img[k],rc):K.img[k];}return K.themed[key];}
+function kCols(){
+  if(K.col[MAP.theme])return K.col[MAP.theme];
+  const t=KT[MAP.theme],img=themed('bgs'),c=document.createElement('canvas');c.width=c.height=1;const x=c.getContext('2d');
+  const at=id=>{x.clearRect(0,0,1,1);x.drawImage(img,(id%8)*24+12,Math.floor(id/8)*24+20,1,1,0,0,1,1);const d=x.getImageData(0,0,1,1).data;return`rgb(${d[0]},${d[1]},${d[2]})`;};
+  return K.col[MAP.theme]={sky:at(t.sky),fill:at(t.bg[0]+8)};
+}
+function spr(img,key,idx,x,y,s=2){
+  const S=SHEET[key],ts=S.ts,c=idx%S.cols,r=Math.floor(idx/S.cols);
+  const prev=g.imageSmoothingEnabled;g.imageSmoothingEnabled=false;
+  g.drawImage(img,c*ts,r*ts,ts,ts,x,y,ts*s,ts*s);
+  g.imageSmoothingEnabled=prev;
+}
+const khash=i=>(Math.imul(i^0x9e3779b9,0x85ebca6b)>>>0);
+function kBand(img,ids,y,par,s){
+  const ts=24*s,base=camX*par;
+  for(let i=Math.floor(base/ts);i*ts-base<W;i++)spr(img,'bgs',ids[((i%ids.length)+ids.length)%ids.length],Math.round(i*ts-base),y,s);
+}
+function kBG(){
+  const t=KT[MAP.theme],img=themed('bgs'),c=kCols(),y1=GROUND-136;
+  g.fillStyle=c.sky;g.fillRect(0,0,W,H);
+  g.globalAlpha=.4;kBand(img,t.bg,y1-80,.1,4);g.globalAlpha=1;
+  kBand(img,t.bg,y1,.25,4);
+  g.fillStyle=c.fill;g.fillRect(0,y1+95,W,H-y1-95);
+  if(MAP.theme==='forest'||MAP.theme==='boss'){g.save();g.globalCompositeOperation='lighter';
+    for(let i=0;i<4;i++){const bx=((i*300-camX*.2)%1200+1200)%1200-120;const lg=g.createLinearGradient(bx,0,bx+120,GROUND);lg.addColorStop(0,MAP.theme==='boss'?'rgba(255,80,120,.10)':'rgba(255,255,200,.10)');lg.addColorStop(1,'rgba(255,255,200,0)');
+      g.fillStyle=lg;g.beginPath();g.moveTo(bx,0);g.lineTo(bx+60,0);g.lineTo(bx+220,GROUND);g.lineTo(bx+120,GROUND);g.closePath();g.fill();}
+    g.restore();}
+}
+function kGround(){
+  const t=KT[MAP.theme],img=themed('tiles');
+  for(let i=Math.floor(camX/36);i*36-camX<W;i++){const sx=Math.round(i*36-camX);spr(img,'tiles',t.cap,sx,GROUND-4,2);for(let y=GROUND+32;y<H;y+=36)spr(img,'tiles',122,sx,y,2);}
+}
+function kPlat(p){
+  const t=KT[MAP.theme],img=themed('tiles'),n=Math.max(1,Math.round(p.w/36));
+  for(let i=0;i<n;i++)spr(img,'tiles',n===1?t.set[0]:i===0?t.set[1]:i===n-1?t.set[3]:t.set[2],p.x+i*36,p.y-4,2);
+}
+function kLadder(r){
+  const img=themed('tiles');g.save();g.beginPath();g.rect(r.x-20,r.y1-4,40,r.y2-r.y1+4);g.clip();
+  for(let y=r.y1-4;y<r.y2;y+=36)spr(img,'tiles',71,r.x-18,y,2);g.restore();
+}
+function kDeco(){
+  const t=KT[MAP.theme],img=themed('tiles');
+  for(let i=Math.floor(camX/36)-1;i*36-camX<W;i++){
+    const x=i*36,h=khash(i*31+mapId*977);
+    if(h%7>1||MAP.portals.some(p=>Math.abs(p.x-x-18)<90)||MAP.npcs.some(n=>Math.abs(n.x-x-18)<60))continue;
+    spr(img,'tiles',t.deco[(h>>8)%t.deco.length],x,GROUND-34,2);
+  }
+  for(const po of MAP.portals)spr(img,'tiles',po.side==='R'?85:84,po.x+(po.side==='R'?-96:60),GROUND-34,2);
+  for(const n of MAP.npcs){spr(img,'tiles',130,n.x-18,GROUND-70,2);spr(img,'tiles',150,n.x-18,GROUND-34,2);}
+}
+// animation frames in the characters sheet; s = draw scale (logical px per sprite px)
+const MSPR={snail:{f:[0,1],s:2},bluesnail:{f:[2,3],s:2},slime:{f:[4,5],s:2},mush:{f:[6,7],s:2},hornmush:{f:[24,25,26,25],s:2,fly:1},
+  stump:{f:[15,16,17,16],s:2,fly:1},golem:{f:[11,12],s:3},kingmush:{f:[21,22,23,22],s:6},imp:{f:[13,14],s:2}};
+function kMobArt(m){
+  const d=MSPR[m.type],ts=24*d.s,moving=d.fly||(m.mv&&!(m.frozen>0||m.shock>0)&&!m.dead);
+  const fr=d.f[moving?Math.floor(m.anim*(d.fly?10:5))%d.f.length:0];
+  const bob=d.fly?Math.sin(m.anim*4)*3-2:0;
+  spr(K.img.chars,'chars',fr,-ts/2,-ts+bob+d.s,d.s);
+}
 const OL='#2b1d33';
 let shake=0,amb=[];const GLOW={};let VIGNETTE=null;
 function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
@@ -836,8 +937,8 @@ const PAL={
   town:{leaf:['#3d8a3f','#5cae4e','#93d66c'],trunk:'#7a5230',mtn:'#8fb9da',hill:'#7cc46a',bush:'#4f9a45',amb:'petal'},
   field:{leaf:['#3a8a3c','#58ad4a','#98da70'],trunk:'#74502e',mtn:'#93b9dc',hill:'#86cc6c',bush:'#4b9a42',amb:'leaf'},
   forest:{leaf:['#1d4a33','#2e6e47','#4f9d5e'],trunk:'#4a3220',mtn:'#4f8270',hill:'#2f6b4c',bush:'#1e4a33',amb:'firefly'},
-  hill:{leaf:['#a3432a','#d9702f','#f4a94a'],trunk:'#5e3a22',mtn:'#dc9e70',hill:'#c98446',bush:'#9a5228',amb:'leafA'},
-  ruins:{leaf:['#2f4a3a','#456a4f','#6a9470'],trunk:'#3e3a40',mtn:'#70739a',hill:'#55587e',bush:'#3a3d5c',amb:'dust'},
+  hill:{leaf:['#a3432a','#d9702f','#f4a94a'],trunk:'#5e3a22',mtn:'#dc9e70',hill:'#c98446',bush:'#9a5228',amb:'dust'},
+  ruins:{leaf:['#2f4a3a','#456a4f','#6a9470'],trunk:'#3e3a40',mtn:'#70739a',hill:'#55587e',bush:'#3a3d5c',amb:'snow'},
   boss:{leaf:['#3a1530','#5a2040','#8a3050'],trunk:'#2a1520',mtn:'#55263f',hill:'#3a1a2c',bush:'#2a1020',amb:'ember'},
 };
 const LW=1600,GT=256;
@@ -996,6 +1097,7 @@ function platArt(p,th,T,P,r,rs){
 }
 function drawLayer(c,f,y=0){const off=((camX*f)%LW+LW)%LW;g.drawImage(c,-off,y,LW,H);if(LW-off<W)g.drawImage(c,LW-off,y,LW,H);}
 function drawBG(){
+  if(K.ready){kBG();return;}
   const G=buildGfx(MAP);
   g.drawImage(G.sky,0,0,W,H);
   G.clouds.forEach((c,i)=>{for(let k=0;k<2;k++){const span=W+260;const x=(((i*340+k*610)+time*(6+i*3)-camX*.06)%span+span)%span-220;g.globalAlpha=MAP.theme==='boss'?.5:.9;g.drawImage(c,x,30+i*38+k*24,220*(1-k*.25),90*(1-k*.25));}});
@@ -1009,6 +1111,7 @@ function drawBG(){
   drawLayer(G.near,.6);
 }
 function drawGround(){
+  if(K.ready){kGround();return;}
   const G=MAP.gfx;const off=((camX%GT)+GT)%GT;
   for(let x=-off;x<W;x+=GT)g.drawImage(G.ground,Math.floor(x),GROUND-14,GT+1,G.tileH);
 }
@@ -1036,13 +1139,14 @@ function drawWorld(){
   g.save();g.translate(sx,sy);
   drawGround();
   g.save();g.translate(-Math.round(camX),0);
-  for(const r of MAP.ropes)if(r.x>camX-20&&r.x<camX+W+20)drawRope(r);
-  for(const p of MAP.plats){if(p.ground||!p.cv||p.x>camX+W||p.x+p.w<camX)continue;g.drawImage(p.cv,p.x-12,p.y-14,p.w+24,90);}
+  for(const r of MAP.ropes)if(r.x>camX-20&&r.x<camX+W+20)K.ready?kLadder(r):drawRope(r);
+  for(const p of MAP.plats){if(p.ground||p.x>camX+W||p.x+p.w<camX)continue;if(K.ready)kPlat(p);else if(p.cv)g.drawImage(p.cv,p.x-12,p.y-14,p.w+24,90);}
+  if(K.ready)kDeco();
   for(const po of MAP.portals)drawPortal(po);
   for(const n of MAP.npcs){drawChar(n.x,GROUND,n.x<player.x?1:-1,n,0,false);
     defer(()=>{nameTag(n.name,n.x,GROUND+14,'#ffe27a');
-      if(Math.abs(n.x-player.x)<44){g.fillStyle='#fff';rr(n.x-30,GROUND-118,60,24,8);g.fill();g.strokeStyle=OL;g.lineWidth=1.5;g.stroke();txt('↑ 대화',n.x,GROUND-106,14,'#1a2042');}
-      else{const b=Math.sin(time*3)*3;txt('!',n.x+16,GROUND-104+b,22,'#ffcf4a',OL,'center',4);}});
+      if(Math.abs(n.x-player.x)<44){g.fillStyle='#fff';rr(n.x-30,GROUND-96,60,24,8);g.fill();g.strokeStyle=OL;g.lineWidth=1.5;g.stroke();txt('↑ 대화',n.x,GROUND-84,14,'#1a2042');}
+      else{const b=Math.sin(time*3)*3;txt('!',n.x+12,GROUND-82+b,22,'#ffcf4a',OL,'center',4);}});
   }
   for(const d of drops)drawDrop(d);
   for(const m of mobs)drawMob(m);
@@ -1064,7 +1168,7 @@ function drawWorld(){
     if(f.type==='shock'){const k=f.t/.4;g.strokeStyle=`rgba(255,176,112,${1-k})`;g.lineWidth=6;g.beginPath();g.ellipse(f.x,f.y,40+k*240,8+k*16,0,0,7);g.stroke();}
   }
   g.globalCompositeOperation='source-over';
-  for(const e of eshots){drawGlow('#ffb060',e.x,e.y,e.r*2.5,.5);const eg=g.createRadialGradient(e.x-3,e.y-3,1,e.x,e.y,e.r);eg.addColorStop(0,'#ffe2a8');eg.addColorStop(1,'#a8602a');g.fillStyle=eg;g.beginPath();g.arc(e.x,e.y,e.r,0,7);g.fill();g.strokeStyle=OL;g.lineWidth=1.5;g.stroke();}
+  for(const e of eshots){if(K.ready){spr(K.img.chars,'chars',8,Math.round(e.x-12),Math.round(e.y-12),1);continue;}drawGlow('#ffb060',e.x,e.y,e.r*2.5,.5);const eg=g.createRadialGradient(e.x-3,e.y-3,1,e.x,e.y,e.r);eg.addColorStop(0,'#ffe2a8');eg.addColorStop(1,'#a8602a');g.fillStyle=eg;g.beginPath();g.arc(e.x,e.y,e.r,0,7);g.fill();g.strokeStyle=OL;g.lineWidth=1.5;g.stroke();}
   for(const n of nums)defer(()=>drawNum(n));
   for(const t of texts)defer(()=>{const a=t.t<1?1:1-(t.t-1)/.4;g.globalAlpha=clamp(a,0,1);const sc=t.big?1+Math.max(0,.25-t.t)*2:1;txt(t.txt,t.x,t.y-t.t*30,(t.big?(t.lvl?34:26):16)*sc,t.c,'#3a1d05',undefined,t.big?6:4);g.globalAlpha=1;});
   g.globalAlpha=1;
@@ -1073,7 +1177,8 @@ function drawWorld(){
 }
 function drawDrop(d){
   const bob=d.onG?Math.sin(d.t*4)*3:0;const y=d.y-10+bob,x=d.x;
-  if(d.kind==='meso'){
+  if(d.kind==='meso'&&K.ready)spr(K.img.tiles,'tiles',Math.floor(d.t*6)%2?152:151,Math.round(x-18),Math.round(y-18),2);
+  else if(d.kind==='meso'){
     g.save();g.translate(x,y);g.scale(Math.abs(Math.cos(d.t*3))*.6+.4,1);
     const cg=g.createRadialGradient(-2,-3,1,0,0,8);cg.addColorStop(0,'#fff3b0');cg.addColorStop(.5,'#f5c542');cg.addColorStop(1,'#b8860b');
     g.fillStyle=cg;g.beginPath();g.arc(0,0,7.5,0,7);g.fill();g.strokeStyle='#7a5608';g.lineWidth=1.5;g.stroke();
@@ -1119,7 +1224,7 @@ function drawNum(n){
 }
 function nameTag(s,x,y,c){g.font=`13px ${FONT}`;const w=g.measureText(s).width+12;g.fillStyle='rgba(10,12,30,.72)';rr(x-w/2,y-9,w,18,4);g.fill();txt(s,x,y,13,c);}
 function drawChar(x,y,dir,o,walk,casting){
-  g.save();g.translate(x,y);
+  g.save();g.translate(x,y);g.scale(o.sc||1,o.sc||1);
   g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(0,0,17,4.5,0,0,7);g.fill();
   g.scale(dir,1);
   const bob=walk?-Math.abs(walk)*2:Math.sin(time*3+x*.01)*.8;g.translate(0,bob);
@@ -1175,7 +1280,7 @@ function drawChar(x,y,dir,o,walk,casting){
   g.fillStyle='#ffe2c8';g.beginPath();g.arc(hand[0],hand[1],3.4,0,7);g.fill();g.strokeStyle=OL;g.lineWidth=1.5;g.stroke();
   g.restore();
 }
-const PLAYER_LOOK={robe:'#3b5bb5',hat:'#4a3a9a',band:'#ffcf4a',hair:'#5a3a24',cape:'#7a2f4a',eye:'#3a8ad0'};
+const PLAYER_LOOK={sc:.62,robe:'#3b5bb5',hat:'#4a3a9a',band:'#ffcf4a',hair:'#5a3a24',cape:'#7a2f4a',eye:'#3a8ad0'};
 function drawPlayer(){
   const P=player;if(P.inv>0&&Math.floor(P.inv*16)%2===0)g.globalAlpha=.45;
   const walk=P.onGround&&Math.abs(P.vx)>.4?Math.sin(P.anim*14):0;
@@ -1210,7 +1315,8 @@ function drawMob(m){
   else if(m.frozen>0)g.filter='saturate(.4) brightness(1.25)';
   g.lineJoin='round';g.lineCap='round';g.strokeStyle=OL;g.lineWidth=2;
   const w=m.w,h=m.h;
-  switch(m.type){
+  if(K.ready&&MSPR[m.type])kMobArt(m);
+  else switch(m.type){
     case'snail':case'bluesnail':{
       g.fillStyle=body(T.body,-w*.3,-10,w*.7);rr(-w/2-3,-11,w+3,11,5.5);g.fill();g.stroke();
       g.beginPath();g.arc(-w/2+2,-13,7.5,0,7);g.fill();g.stroke();
@@ -1228,7 +1334,7 @@ function drawMob(m){
       g.fillStyle='rgba(255,255,255,.7)';g.beginPath();g.ellipse(-w*.22,-h*.68,6,3.5,-.6,0,7);g.fill();g.beginPath();g.arc(-w*.08,-h*.82,1.8,0,7);g.fill();
       eyes(-w*.12,-h*.42,2.8,9);g.strokeStyle='#1d1530';g.lineWidth=1.5;g.beginPath();g.arc(-w*.2,-h*.28,3,.3,Math.PI-.3);g.stroke();
       break;}
-    case'mush':case'hornmush':case'kingmush':{
+    case'mush':case'imp':case'hornmush':case'kingmush':{
       const k=m.type==='kingmush',lw2=k?3:2;g.lineWidth=lw2;
       const step=still?0:Math.sin(m.anim*8)*(k?5:2.5);
       g.fillStyle='#d8c6a6';g.beginPath();g.ellipse(-w*.16+step,-3,w*.12,4+(k?4:0),0,0,7);g.ellipse(w*.16-step,-3,w*.12,4+(k?4:0),0,0,7);g.fill();g.stroke();
@@ -1309,6 +1415,7 @@ function drawAmb(){
   for(const p of amb){
     const fade=Math.min(1,p.t,(p.life-p.t));if(fade<=0)continue;
     if(p.kind==='firefly'||p.kind==='ember'){g.globalCompositeOperation='lighter';drawGlow(p.kind==='ember'?'#ff6a3a':'#d8ff7a',p.x,p.y,p.kind==='ember'?5:7,fade*(.5+.5*Math.sin(p.t*4+p.rot)));g.globalCompositeOperation='source-over';}
+    else if(p.kind==='snow'){g.fillStyle=`rgba(255,255,255,${.85*fade})`;g.fillRect(p.x,p.y,3,3);}
     else if(p.kind==='dust'){g.fillStyle=`rgba(230,225,255,${.35*fade})`;g.fillRect(p.x,p.y,2,2);}
     else{g.save();g.translate(p.x,p.y);g.rotate(p.rot+p.t*2);g.scale(1,Math.sin(p.t*3));g.globalAlpha=fade*.9;
       g.fillStyle=p.kind==='petal'?'#ffc0d8':p.kind==='leafA'?(p.rot>3?'#f29a3a':'#d9582f'):'#7ccf5a';g.beginPath();g.ellipse(0,0,5,2.6,0,0,7);g.fill();g.restore();g.globalAlpha=1;}
@@ -1316,7 +1423,7 @@ function drawAmb(){
 }
 function vignette(){
   if(!VIGNETTE){const[c,x]=mk(W,H,1);const gr=x.createRadialGradient(W/2,H/2,H*.45,W/2,H/2,H*1.05);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,10,.45)');x.fillStyle=gr;x.fillRect(0,0,W,H);VIGNETTE=c;}
-  g.drawImage(VIGNETTE,0,0,W,H);
+  g.globalAlpha=K.ready?.45:1;g.drawImage(VIGNETTE,0,0,W,H);g.globalAlpha=1;
 }
 function drawHUD(){
   // minimap
@@ -1506,7 +1613,7 @@ const GUIDE=[
   '<em>멀티캐스트</em>(금색 테두리)는 다음 카드 여러 장을 한 번에 쏘게 해요. [더블 캐스트][파이어 애로우][아이스 샤드]처럼 써 보세요.',
   '<em>트리거</em>(보라 테두리)는 맞힌 자리에서 다음 카드를 시전해요. [트리거 볼트][부채꼴 캐스트][스파크][스파크][스파크]는 적중 지점에서 불꽃이 퍼져요.',
   '원소를 섞으면 연계가 일어나요. 얼린 적에게 <em>화염</em>을 맞히면 융해, <em>전격</em>을 맞히면 파쇄! 불타는 적에게 냉기나 전격을 맞히면 폭발해요.',
-  '오른쪽 포털로 나가면 사냥터예요. 초록 들판, 버섯 숲, 고목 언덕, 골렘 유적을 지나면 버섯왕이 기다리고 있어요. 행운을 빌어요!',
+  '오른쪽 포털로 나가면 사냥터예요. 초록 들판, 깊은 숲, 노을 사막, 얼음 유적을 지나면 강철 게 킹이 기다리고 있어요. 행운을 빌어요!',
 ];
 function renderGuide(i){
   $('shop-body').innerHTML=`<div class="dlg">${GUIDE[i]}</div><div class="row"><span class="label">${i+1} / ${GUIDE.length}</span><span style="flex:1"></span>
