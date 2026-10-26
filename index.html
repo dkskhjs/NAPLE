@@ -380,8 +380,32 @@ function genWand(tier){
   const recharge=+Math.max(.1,.9-tier*.13-rand(.35)).toFixed(2);
   const spread=Math.max(0,Math.round(rand(10)-tier*2));
   const casts=tier>=2&&Math.random()<.35?2:1;
-  return mkWand(WAND_PRE[clamp(tier+irand(0,2),0,6)]+' '+pick(WAND_SUF),slots,delay,recharge,spread,casts,[],pick(TIPS),tier);
+  const w=mkWand(WAND_PRE[clamp(tier+irand(0,2),0,6)]+' '+pick(WAND_SUF),slots,delay,recharge,spread,casts,[],pick(TIPS),tier);
+  w.perks=rollPerks(tier);return w;
 }
+// wand-unique options (Noita-style personality); r = value range when the perk has a number
+const PERKS={
+  fire:{d:v=>`화염 투사체 피해 +${pct(v)}`,r:[.2,.35]},ice:{d:v=>`냉기 투사체 피해 +${pct(v)}`,r:[.2,.35]},
+  thunder:{d:v=>`전격 투사체 피해 +${pct(v)}`,r:[.2,.35]},poison:{d:v=>`독 투사체 피해 +${pct(v)}`,r:[.2,.35]},
+  firstFree:{d:()=>'재충전 후 첫 카드는 마나 0'},
+  manaSave:{d:v=>`이 지팡이의 마나 소모 -${pct(v)}`,r:[.15,.25]},
+  multi:{d:v=>`멀티캐스트로 쏜 투사체 피해 +${pct(v)}`,r:[.15,.3]},
+  trig:{d:v=>`트리거로 시전된 투사체 피해 +${pct(v)}`,r:[.3,.5]},
+  pierce:{d:()=>'모든 투사체 관통 +1'},
+  seek:{d:()=>'모든 투사체가 약하게 적을 쫓음'},
+  crit:{d:v=>`치명타 확률 +${pct(v)}`,r:[.08,.15]},
+  echo:{d:v=>`${pct(v)} 확률로 시전이 한 번 더 메아리침`,r:[.1,.18]},
+  leech:{d:()=>'적중할 때마다 MP 1 회복'},
+  big:{d:v=>`투사체 크기 +${pct(v)}`,r:[.25,.4]},
+};
+function rollPerks(tier){
+  const n=tier>=4?irand(2,3):tier>=3?2:tier>=2?irand(1,2):tier>=1?1:(Math.random()<.3?1:0);
+  const keys=Object.keys(PERKS),out=[];
+  while(out.length<n){const k=pick(keys);if(out.some(o=>o.k===k))continue;const r=PERKS[k].r;out.push({k,v:r?Math.round(rand(r[0],r[1])*100)/100:1});}
+  return out;
+}
+const perk=(w,k)=>{if(!w||!w.perks)return 0;const o=w.perks.find(p=>p.k===k);return o?o.v:0;};
+const perksHTML=w=>(w.perks&&w.perks.length)?`<div class="stats" style="color:var(--accent)">${w.perks.map(o=>`<span>✦ ${PERKS[o.k].d(o.v)}</span>`).join('')}</div>`:'';
 const needExp=lv=>Math.floor(12*Math.pow(lv,1.7)+8);
 // ---------- derived stats: level, AP, gear and job all feed one cached table
 const AP_PER_LV=5;
@@ -543,7 +567,7 @@ function drawCards(w,n,ctx){
   while(n>0&&guard++<64){
     if(w.ptr>=w.cards.length){ctx.wrapped=true;break;}
     const id=w.cards[w.ptr++];if(!id)continue;const c=CARDS[id];
-    if(!ctx.sim){const cost=c.mana*stats().manaMul;if(S.mp<cost){ctx.skipped=true;continue;}S.mp-=cost;}
+    if(!ctx.sim){let cost=c.mana*stats().manaMul*(1-perk(w,'manaSave'));if(ctx.free&&cost>0){cost=0;ctx.free=false;}if(S.mp<cost){ctx.skipped=true;continue;}S.mp-=cost;}
     ctx.delay+=c.delay||0;ctx.recharge+=c.recharge||0;
     if(c.type==='mod'){applyMod(grp.mods,c);continue;}
     if(c.type==='multi'){n+=c.draw-1;if(c.pattern)grp.mods.pattern=Math.max(grp.mods.pattern,c.pattern);if(c.spreadAdd)grp.mods.spreadAdd+=c.spreadAdd;grp.mods.names.push(c.name);continue;}
@@ -555,15 +579,16 @@ function drawCards(w,n,ctx){
 }
 function castWand(ang){
   const w=wand();if(!w||w.cool>0||w.rech>0)return;
-  const ctx={delay:0,recharge:0,wrapped:false,skipped:false};
+  const ctx={delay:0,recharge:0,wrapped:false,skipped:false,free:w.ptr===0&&perk(w,'firstFree')};
   const grp=drawCards(w,w.casts||1,ctx);
   if(ctx.wrapped||!hasMore(w)){w.ptr=0;w.rech=Math.max(.05,w.recharge+ctx.recharge);}
   w.cool=Math.max(.05,(w.delay+ctx.delay)*stats().delayMul);
   if(!grp.projs.length){if(ctx.skipped&&time-(castWand.warn||0)>2){castWand.warn=time;log('MP가 부족합니다','#8fb8ff');}return;}
   if(player.castT<=0)player.castStart=time;player.castT=.25;sfx('cast');
-  spawnGroup(grp,player.x+player.dir*11,player.y-24,ang,w.spread);
+  spawnGroup(grp,player.x+player.dir*11,player.y-24,ang,w.spread,{w});
+  if(Math.random()<perk(w,'echo')){spawnGroup(grp,player.x+player.dir*11,player.y-30,ang-.06,w.spread,{w});texts.push({x:player.x,y:player.y-70,txt:'메아리',t:.4,c:'#d6c8ff'});}
 }
-function spawnGroup(grp,x,y,ang,spread){
+function spawnGroup(grp,x,y,ang,spread,src={}){
   const k=grp.projs.length,M=grp.mods;
   const sp=(spread+M.spreadAdd)*M.spreadMul*Math.PI/180;
   grp.projs.forEach((p,i)=>{
@@ -571,15 +596,17 @@ function spawnGroup(grp,x,y,ang,spread){
     if(M.pattern&&k>1)a=ang+(i/(k-1)-.5)*M.pattern*Math.PI/180;
     else a=ang+rand(-sp,sp)+(k>1&&M.spreadMul?(i-(k-1)/2)*.05:0);
     const c=CARDS[p.id];if(c.spread&&M.spreadMul)a+=rand(-1,1)*c.spread*Math.PI/180;
-    makeProj(p,M,x,y,a);
+    makeProj(p,M,x,y,a,{...src,multi:k>1});
   });
 }
-function makeProj(p,M,x,y,ang){
+function makeProj(p,M,x,y,ang,src={}){
   if(projs.length>320)return;
-  const c=CARDS[p.id];const sp=c.speed*M.speedMul;
-  const o={id:p.id,c,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:c.size*M.sizeMul,dmg:c.dmg+M.dmg,life:c.life*M.lifeMul,age:0,
-    elem:M.element||c.element||null,homing:M.homing,pierce:M.pierce,bounce:(c.bounce||0)+M.bounce,explode:Math.max(c.explode||0,M.explode),
-    crit:M.crit,gravity:c.gravity||0,chain:c.chain||0,kind:c.kind||'shot',trigger:c.trigger||null,payload:p.payload,fired:false,hit:new Set(),tick:0,dead:false};
+  const c=CARDS[p.id],w=src.w,sp=c.speed*M.speedMul,elem=M.element||c.element||null;
+  // wand perks add up, gear/job element bonus multiplies on top
+  const mult=(1+(elem?perk(w,elem):0)+(src.multi?perk(w,'multi'):0)+(src.trig?perk(w,'trig'):0))*(1+(elem?stats().elem[elem]:0));
+  const o={id:p.id,c,w,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:c.size*M.sizeMul*(1+perk(w,'big')),dmg:(c.dmg+M.dmg)*mult,leech:perk(w,'leech'),life:c.life*M.lifeMul,age:0,
+    elem,homing:M.homing||(perk(w,'seek')?.35:0),pierce:M.pierce+(perk(w,'pierce')?1:0),bounce:(c.bounce||0)+M.bounce,explode:Math.max(c.explode||0,M.explode),
+    crit:M.crit+perk(w,'crit'),gravity:c.gravity||0,chain:c.chain||0,kind:c.kind||'shot',trigger:c.trigger||null,payload:p.payload,fired:false,hit:new Set(),tick:0,dead:false};
   if(M.element==='thunder'&&!o.chain)o.chain=1;
   if(o.kind==='meteor'){
     const dir=Math.cos(ang)>=0?1:-1;const tx=x+Math.cos(ang)*240;
@@ -590,7 +617,7 @@ function makeProj(p,M,x,y,ang){
 }
 function firePayload(o){
   if(o.fired||!o.payload||!o.payload.projs.length)return;o.fired=true;
-  spawnGroup(o.payload,o.x,o.y,Math.atan2(o.vy,o.vx),6);
+  spawnGroup(o.payload,o.x,o.y,Math.atan2(o.vy,o.vx),6,{w:o.w,trig:true});
 }
 function simulate(w){
   const cp={cards:w.cards,ptr:0};const out=[];let total=0;
@@ -836,7 +863,7 @@ function updateProjs(dt){
   for(const o of projs){
     if(o.dead)continue;o.age+=dt;
     if(o.homing){const t=nearestMob(o.x,o.y,420);if(t){const want=Math.atan2((t.y-t.h/2)-o.y,t.x-o.x),cur=Math.atan2(o.vy,o.vx);let d=want-cur;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;
-      const na=cur+clamp(d,-.13,.13),sp=Math.hypot(o.vx,o.vy);o.vx=Math.cos(na)*sp;o.vy=Math.sin(na)*sp;}}
+      const na=cur+clamp(d,-.13*o.homing,.13*o.homing),sp=Math.hypot(o.vx,o.vy);o.vx=Math.cos(na)*sp;o.vy=Math.sin(na)*sp;}}
     const prevY=o.y;o.vy+=o.gravity;o.x+=o.vx;o.y+=o.vy;
     if(o.kind==='cloud'){o.tick-=dt;if(o.tick<=0){o.tick=.35;for(const m of mobs){if(m.dead)continue;if(Math.abs(m.x-o.x)<o.r+m.w/2&&Math.abs((m.y-m.h/2)-o.y)<o.r+m.h/2)hitMob(m,o.dmg,o.elem,o.crit,0,null);}}
       if(Math.random()<.4)parts.push({x:o.x+rand(-o.r,o.r),y:o.y+rand(-o.r/2,o.r/2),vx:0,vy:-.4,life:.6,c:ELEM[o.elem]?ELEM[o.elem].c:'#a46bff',s:5});}
@@ -851,7 +878,7 @@ function updateProjs(dt){
         if(m.dead||o.hit.has(m))continue;
         const top=m.y+m.jy-m.h;
         if(o.x>m.x-m.w/2-o.r&&o.x<m.x+m.w/2+o.r&&o.y>top-o.r&&o.y<m.y+m.jy+o.r){
-          o.hit.add(m);hitMob(m,o.dmg,o.elem,o.crit,o.vx,o);
+          o.hit.add(m);hitMob(m,o.dmg,o.elem,o.crit,o.vx,o);if(o.leech)S.mp=Math.min(maxMP(),S.mp+1);
           if(o.trigger==='hit')firePayload(o);
           if(o.kind==='meteor'){kill(o);break;}
           if(o.pierce>0)o.pierce--;else{kill(o);break;}
@@ -890,7 +917,7 @@ function pickup(d){
   else if(d.kind==='gear'){if(S.gear.length>=24){if(!d.warned){d.warned=1;log('장비 가방이 가득 찼습니다','#ff9a8a');}return;}
     S.gear.push(d.val);sfx('coin');log(`장비 [${RARITY[d.val.rar].n}] ${d.val.name} 획득 (C 키)`,RARITY[d.val.rar].c);}
   else if(d.kind==='wand'){if(S.wands.length>=4){if(!d.warned){d.warned=1;log('지팡이는 4개까지 들 수 있습니다','#ff9a8a');}return;}
-    S.wands.push(d.val);sfx('coin');log(`지팡이 [${d.val.name}] 획득! 숫자키 ${S.wands.length}로 장착`,'#ffcf4a');}
+    S.wands.push(d.val);sfx('coin');log(`지팡이 [${d.val.name}] 획득! 숫자키 ${S.wands.length}로 장착${d.val.perks&&d.val.perks.length?` · 고유 옵션 ${d.val.perks.length}개`:''}`,'#ffcf4a');}
   d.gone=true;
 }
 function update(dt){
@@ -1664,11 +1691,11 @@ function renderBook(){
   const wandsH=S.wands.map((w,i)=>{
     const seq=simulate(w);
     return`<div class="wand${i===S.cur?' on':''}">
-      <div class="wand-top"><span class="wand-name" style="color:${w.tip}">${i+1}. ${w.name}</span>${wandStats(w)}
+      <div class="wand-top"><img src="${iconURL(7+Math.min(4,w.tier||0))}" width="32" height="32" style="image-rendering:pixelated" alt=""><span class="wand-name" style="color:${w.tip}">${i+1}. ${w.name}</span>${wandStats(w)}
         <span style="flex:1"></span>
         ${i!==S.cur?`<button class="btn small" data-equip="${i}">장착</button>`:'<span class="label">장착 중</span>'}
         ${S.wands.length>1?`<button class="btn ghost small" data-drop="${i}">버리기</button>`:''}</div>
-      <div class="slots">${w.cards.map((id,j)=>slotHTML(`w:${i}:${j}`,id)).join('')}</div>
+      ${perksHTML(w)}<div class="slots">${w.cards.map((id,j)=>slotHTML(`w:${i}:${j}`,id)).join('')}</div>
       <ol class="seq">${seq.length?seq.map(s=>`<li>${s}</li>`).join(''):'<li>카드를 넣으면 시전 순서가 여기에 표시됩니다.</li>'}</ol>
     </div>`;}).join('');
   const bagN=Math.max(24,Math.ceil((S.bag.length+1)/8)*8);const bag=[];for(let i=0;i<Math.min(30,bagN);i++)bag.push(slotHTML(`b:${i}`,S.bag[i]));
@@ -1797,11 +1824,11 @@ function renderWandShop(){
   const tier=Math.min(3,Math.floor(S.lv/6));
   if(!wandStock)wandStock=[genWand(tier),genWand(tier),genWand(Math.min(4,tier+1))];
   if(!gearStock)gearStock=GEAR_SLOTS.map(k=>genGear(tier,k,.05));
-  const price=w=>200+w.tier*450+w.slots*40;
+  const price=w=>200+w.tier*450+w.slots*40+(w.perks?w.perks.length*150:0);
   $('shop-body').innerHTML=`<div class="dlg">지팡이는 그릇이야. 슬롯이 많을수록 더 긴 주문을 담고, 시전 지연과 재충전이 짧을수록 빨리 쏘지. 모자, 로브, 신발, 반지도 손봐 뒀다네.</div>
     <div class="row"><span class="label">보유 메소 ${S.meso.toLocaleString()} · 지팡이 ${S.wands.length}/4</span></div>
-    <div class="wands">${wandStock.map((w,i)=>w?`<div class="wand"><div class="wand-top"><span class="wand-name" style="color:${w.tip}">${w.name}</span>${wandStats(w)}<span style="flex:1"></span><span class="price">${price(w)}</span>
-      <button class="btn small" data-wbuy="${i}" ${S.meso<price(w)||S.wands.length>=4?'disabled':''}>구매</button></div></div>`:'').join('')}</div>
+    <div class="wands">${wandStock.map((w,i)=>w?`<div class="wand"><div class="wand-top"><img src="${iconURL(7+Math.min(4,w.tier))}" width="32" height="32" style="image-rendering:pixelated" alt=""><span class="wand-name" style="color:${w.tip}">${w.name}</span>${wandStats(w)}<span style="flex:1"></span><span class="price">${price(w)}</span>
+      <button class="btn small" data-wbuy="${i}" ${S.meso<price(w)||S.wands.length>=4?'disabled':''}>구매</button></div>${perksHTML(w)}</div>`:'').join('')}</div>
     <div class="row"><span class="label">장비 · 가방 ${S.gear.length}/24</span></div>
     <div class="shop-list">${gearStock.map((it,i)=>it?`<div class="item"><img src="${iconURL(it.icon,it.hue)}" width="40" height="40" style="image-rendering:pixelated;border:2px solid ${RARITY[it.rar].c};border-radius:6px" alt="">
       <div class="grow"><div class="nm" style="color:${RARITY[it.rar].c}">${it.name}</div><div class="ds">${RARITY[it.rar].n} ${GEAR[it.slot].n} · Lv.${it.lv} · ${it.opts.map(optText).join(', ')}</div></div>
@@ -1849,7 +1876,7 @@ function frame(now){
 }
 requestAnimationFrame(frame);
 // dev helper: naple.warp(2) in the console jumps to a map
-window.naple={warp:i=>{if(started)changeMap(clamp(i,0,MAPS.length-1),'L');},give:id=>{if(CARDS[id])S.bag.push(id);},gear:(t,sl,b)=>{const it=genGear(t,sl,b);S.gear.push(it);return it;},state:()=>S};
+window.naple={warp:i=>{if(started)changeMap(clamp(i,0,MAPS.length-1),'L');},give:id=>{if(CARDS[id])S.bag.push(id);},wand:t=>{const w=genWand(t);S.wands.push(w);return w;},gear:(t,sl,b)=>{const it=genGear(t,sl,b);S.gear.push(it);return it;},state:()=>S};
 addEventListener('beforeunload',save);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});
 })();
