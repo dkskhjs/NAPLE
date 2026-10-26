@@ -68,6 +68,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
 .card.mod{background:radial-gradient(circle at 40% 35%,#24507e,#0f2238);border-color:var(--mod)}
 .card.multi{background:radial-gradient(circle at 40% 35%,#7a5b10,#33250a);border-color:var(--multi)}
 .card.trig{background:radial-gradient(circle at 40% 35%,#5b2f78,#26123a);border-color:var(--trig)}
+.card .up{position:absolute;left:4px;top:1px;font-size:11px;color:#ffe27a;text-shadow:0 1px 0 #000}
 .card .el{position:absolute;right:3px;bottom:2px;width:9px;height:9px;border-radius:50%;border:1px solid rgba(0,0,0,.5)}
 .bag{display:flex;gap:6px;flex-wrap:wrap}
 .split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px}
@@ -285,6 +286,26 @@ const CARDS={
   quad:{name:'쿼드 캐스트',ab:'4',type:'multi',tier:3,mana:12,draw:4,desc:'다음 카드 4장을 동시에 시전합니다.'},
 };
 const CARD_PRICE=[60,180,450,1000];
+// upgraded cards are stored as codes like "fire+2"; C(code) returns the card with upgrades applied
+const MAX_UP=3;
+const cardId=code=>{const i=code.indexOf('+');return i<0?code:code.slice(0,i);};
+const cardUp=code=>{const i=code.indexOf('+');return i<0?0:+code.slice(i+1);};
+const CC={};
+function C(code){
+  if(!code)return null;if(CC[code])return CC[code];
+  const b=CARDS[cardId(code)],n=cardUp(code);if(!b)return null;
+  if(!n)return CC[code]=b;
+  const c={...b,name:`${b.name} +${n}`,up:n,mana:Math.round(b.mana*(1-.12*n)*10)/10};
+  if(b.dmg)c.dmg=Math.round(b.dmg*(1+.25*n));
+  if(b.mod){const m={...b.mod};
+    if(m.dmg)m.dmg=Math.round(m.dmg*(1+.3*n));if(m.speedMul)m.speedMul=1+(m.speedMul-1)*(1+.3*n);if(m.lifeMul)m.lifeMul=1+(m.lifeMul-1)*(1+.3*n);
+    if(m.sizeMul)m.sizeMul=1+(m.sizeMul-1)*(1+.3*n);if(m.crit)m.crit=m.crit*(1+.3*n);if(m.explode)m.explode=Math.round(m.explode*(1+.3*n));
+    if(m.pierce)m.pierce+=n;if(m.bounce)m.bounce+=n;c.mod=m;}
+  if(b.delay<0)c.delay=b.delay*(1+.3*n);
+  return CC[code]=c;
+}
+const cardValue=c=>CARD_PRICE[c.tier]*Math.pow(2.5,c.up||0);
+const mergeCost=c=>Math.round(CARD_PRICE[c.tier]*.5*((c.up||0)+1));
 const TYPE_N={proj:'투사체',mod:'수정자',multi:'멀티캐스트'};
 const cardClass=c=>c.type==='proj'?(c.trigger?'trig':'proj'):c.type;
 
@@ -566,7 +587,7 @@ function drawCards(w,n,ctx){
   const grp={mods:newMods(),projs:[]};let guard=0;
   while(n>0&&guard++<64){
     if(w.ptr>=w.cards.length){ctx.wrapped=true;break;}
-    const id=w.cards[w.ptr++];if(!id)continue;const c=CARDS[id];
+    const id=w.cards[w.ptr++];if(!id)continue;const c=C(id);
     if(!ctx.sim){let cost=c.mana*stats().manaMul*(1-perk(w,'manaSave'));if(ctx.free&&cost>0){cost=0;ctx.free=false;}if(S.mp<cost){ctx.skipped=true;continue;}S.mp-=cost;}
     ctx.delay+=c.delay||0;ctx.recharge+=c.recharge||0;
     if(c.type==='mod'){applyMod(grp.mods,c);continue;}
@@ -595,16 +616,16 @@ function spawnGroup(grp,x,y,ang,spread,src={}){
     let a=ang;
     if(M.pattern&&k>1)a=ang+(i/(k-1)-.5)*M.pattern*Math.PI/180;
     else a=ang+rand(-sp,sp)+(k>1&&M.spreadMul?(i-(k-1)/2)*.05:0);
-    const c=CARDS[p.id];if(c.spread&&M.spreadMul)a+=rand(-1,1)*c.spread*Math.PI/180;
+    const c=C(p.id);if(c.spread&&M.spreadMul)a+=rand(-1,1)*c.spread*Math.PI/180;
     makeProj(p,M,x,y,a,{...src,multi:k>1});
   });
 }
 function makeProj(p,M,x,y,ang,src={}){
   if(projs.length>320)return;
-  const c=CARDS[p.id],w=src.w,sp=c.speed*M.speedMul,elem=M.element||c.element||null;
+  const c=C(p.id),w=src.w,sp=c.speed*M.speedMul,elem=M.element||c.element||null;
   // wand perks add up, gear/job element bonus multiplies on top
   const mult=(1+(elem?perk(w,elem):0)+(src.multi?perk(w,'multi'):0)+(src.trig?perk(w,'trig'):0))*(1+(elem?stats().elem[elem]:0));
-  const o={id:p.id,c,w,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:c.size*M.sizeMul*(1+perk(w,'big')),dmg:(c.dmg+M.dmg)*mult,leech:perk(w,'leech'),life:c.life*M.lifeMul,age:0,
+  const o={id:cardId(p.id),c,w,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:c.size*M.sizeMul*(1+perk(w,'big')),dmg:(c.dmg+M.dmg)*mult,leech:perk(w,'leech'),life:c.life*M.lifeMul,age:0,
     elem,homing:M.homing||(perk(w,'seek')?.35:0),pierce:M.pierce+(perk(w,'pierce')?1:0),bounce:(c.bounce||0)+M.bounce,explode:Math.max(c.explode||0,M.explode),
     crit:M.crit+perk(w,'crit'),gravity:c.gravity||0,chain:c.chain||0,kind:c.kind||'shot',trigger:c.trigger||null,payload:p.payload,fired:false,hit:new Set(),tick:0,dead:false};
   if(M.element==='thunder'&&!o.chain)o.chain=1;
@@ -630,7 +651,7 @@ function simulate(w){
   return out;
 }
 function describe(grp){
-  const ps=grp.projs.map(p=>CARDS[p.id].name+(p.payload?` → [${describe(p.payload)||'없음'}]`:''));
+  const ps=grp.projs.map(p=>C(p.id).name+(p.payload?` → [${describe(p.payload)||'없음'}]`:''));
   const mods=grp.mods.names.length?`(${grp.mods.names.join(' + ')}) `:'';
   return mods+(ps.length?ps.join(', '):'투사체 없음');
 }
@@ -913,7 +934,7 @@ function pickup(d){
   if(d.kind==='meso'){S.meso+=d.val;sfx('coin');log(`메소 +${d.val}`,'#ffd86a');}
   else if(d.kind==='hp'||d.kind==='mp'){S.pot[d.kind]++;sfx('coin');log(d.kind==='hp'?'빨간 포션 획득':'파란 포션 획득','#ff9a9a');}
   else if(d.kind==='card'){const i=S.bag.indexOf(null);if(i<0&&S.bag.length>=30){if(!d.warned){d.warned=1;log('카드 가방이 가득 찼습니다','#ff9a8a');}return;}
-    if(i>=0)S.bag[i]=d.val;else S.bag.push(d.val);sfx('coin');log(`카드 [${CARDS[d.val].name}] 획득`,'#bde0ff');}
+    if(i>=0)S.bag[i]=d.val;else S.bag.push(d.val);sfx('coin');log(`카드 [${C(d.val).name}] 획득`,'#bde0ff');}
   else if(d.kind==='gear'){if(S.gear.length>=24){if(!d.warned){d.warned=1;log('장비 가방이 가득 찼습니다','#ff9a8a');}return;}
     S.gear.push(d.val);sfx('coin');log(`장비 [${RARITY[d.val.rar].n}] ${d.val.name} 획득 (C 키)`,RARITY[d.val.rar].c);}
   else if(d.kind==='wand'){if(S.wands.length>=4){if(!d.warned){d.warned=1;log('지팡이는 4개까지 들 수 있습니다','#ff9a8a');}return;}
@@ -1298,7 +1319,7 @@ function drawDrop(d){
     g.fillStyle=cg;g.beginPath();g.arc(0,0,7.5,0,7);g.fill();g.strokeStyle='#7a5608';g.lineWidth=1.5;g.stroke();
     g.strokeStyle='#a87a12';g.lineWidth=1.2;g.beginPath();g.arc(0,0,4.5,0,7);g.stroke();g.restore();
   } else if(d.kind==='hp'||d.kind==='mp')drawPotion(x,y,d.kind);
-  else if(d.kind==='card'){const c=CARDS[d.val];g.globalCompositeOperation='lighter';drawGlow(c.element?ELEM[c.element].c:'#c8b0ff',x,y,26,.5+Math.sin(d.t*5)*.2);g.globalCompositeOperation='source-over';drawCardIcon(x-11,y-12,22,c);}
+  else if(d.kind==='card'){const c=C(d.val);g.globalCompositeOperation='lighter';drawGlow(c.element?ELEM[c.element].c:'#c8b0ff',x,y,26,.5+Math.sin(d.t*5)*.2);g.globalCompositeOperation='source-over';drawCardIcon(x-11,y-12,22,c);}
   else if(d.kind==='gear'){const it=d.val;g.globalCompositeOperation='lighter';drawGlow(RARITY[it.rar].c,x,y,30,.45+Math.sin(d.t*5)*.2);g.globalCompositeOperation='source-over';
     const ic=iconCanvas(it.icon,it.hue);if(ic){const pv=g.imageSmoothingEnabled;g.imageSmoothingEnabled=false;g.drawImage(ic,Math.round(x-24),Math.round(y-30),48,48);g.imageSmoothingEnabled=pv;}}
   else if(d.kind==='wand'){g.globalCompositeOperation='lighter';drawGlow('#ffcf4a',x,y,34,.45+Math.sin(d.t*5)*.2);drawGlow(d.val.tip,x+8,y-14,14,.9);g.globalCompositeOperation='source-over';
@@ -1463,6 +1484,7 @@ function drawCardIcon(x,y,s,c){
   const gr=g.createRadialGradient(x+s*.4,y+s*.35,1,x+s/2,y+s/2,s*.75);gr.addColorStop(0,shadeHex(col,-.35));gr.addColorStop(1,'#10132a');
   g.fillStyle=gr;rr(x,y,s,s,4);g.fill();g.strokeStyle=col;g.lineWidth=2;rr(x+1,y+1,s-2,s-2,4);g.stroke();
   txt(c.ab,x+s/2,y+s/2+1,s*.55,'#fff','rgba(0,0,0,.5)','center',2);
+  if(c.up)txt('+'+c.up,x+5,y+5,s*.36,'#ffe27a','#000','center',2);
   const el=c.element||(c.mod&&c.mod.element);
   if(el){g.fillStyle=ELEM[el].c;g.beginPath();g.arc(x+s-4,y+s-4,2.8,0,7);g.fill();}
 }
@@ -1607,7 +1629,7 @@ function drawHUD(){
   txt(`${S.cur+1}. ${w.name}`,px+10,py+12,14,'#fff',null,'left');
   S.wands.forEach((ww,i)=>{g.fillStyle=i===S.cur?'#ffcf4a':'rgba(255,255,255,.25)';g.beginPath();g.arc(px+300-14-(S.wands.length-1-i)*12,py+12,4,0,7);g.fill();});
   w.cards.forEach((id,i)=>{const x=px+10+i*(cs+3),y=py+24;
-    if(id)drawCardIcon(x,y,cs,CARDS[id]);else{g.strokeStyle='rgba(255,255,255,.2)';g.lineWidth=1;rr(x,y,cs,cs,4);g.stroke();}
+    if(id)drawCardIcon(x,y,cs,C(id));else{g.strokeStyle='rgba(255,255,255,.2)';g.lineWidth=1;rr(x,y,cs,cs,4);g.stroke();}
     if(i===w.ptr&&w.rech<=0){g.fillStyle='#ffcf4a';g.beginPath();g.moveTo(x+cs/2-4,y+cs+7);g.lineTo(x+cs/2+4,y+cs+7);g.lineTo(x+cs/2,y+cs+2);g.fill();}});
   const bar=w.rech>0?1-clamp(w.rech/Math.max(.05,w.recharge),0,1):1;
   g.fillStyle='rgba(255,255,255,.12)';g.fillRect(px+10,py+62,280,5);g.fillStyle=w.rech>0?'#ff9a4a':'#7ad0ff';g.fillRect(px+10,py+62,280*bar,5);
@@ -1662,30 +1684,48 @@ function closeAll(){$('book').hidden=true;$('shop').hidden=true;$('char').hidden
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeAll);
 let sel=null;
 function slotHTML(loc,id){
-  const c=id&&CARDS[id];const s=sel&&sel===loc?' sel':'';
+  const c=id&&C(id);const s=sel&&sel===loc?' sel':'';
   if(!c)return`<div class="slot${s}" data-slot="${loc}" tabindex="0" aria-label="빈 칸"></div>`;
   const el=c.element||(c.mod&&c.mod.element);
-  return`<div class="slot${s}" data-slot="${loc}" tabindex="0" aria-label="${c.name}"><div class="card ${cardClass(c)}">${c.ab}${el?`<span class="el" style="background:${ELEM[el].c}"></span>`:''}</div></div>`;
+  return`<div class="slot${s}" data-slot="${loc}" tabindex="0" aria-label="${c.name}"><div class="card ${cardClass(c)}">${c.ab}${el?`<span class="el" style="background:${ELEM[el].c}"></span>`:''}${c.up?`<span class="up">+${c.up}</span>`:''}</div></div>`;
 }
 function getLoc(loc){const p=loc.split(':');if(p[0]==='w')return S.wands[+p[1]].cards[+p[2]];if(p[0]==='b')return S.bag[+p[1]];return null;}
 function setLoc(loc,v){const p=loc.split(':');if(p[0]==='w'){S.wands[+p[1]].cards[+p[2]]=v;S.wands[+p[1]].ptr=0;}else if(p[0]==='b'){while(S.bag.length<=+p[1])S.bag.push(null);S.bag[+p[1]]=v;}}
 function moveCard(from,to){
   if(from===to)return;
-  if(to==='sell'){const id=getLoc(from);if(!id)return;const pr=Math.floor(CARD_PRICE[CARDS[id].tier]/2);S.meso+=pr;setLoc(from,null);sfx('coin');detail=`<h4>${CARDS[id].name} 판매</h4>${pr} 메소를 받았습니다.`;return;}
+  if(to==='sell'){const id=getLoc(from);if(!id)return;const pr=Math.floor(cardValue(C(id))/2);S.meso+=pr;setLoc(from,null);sfx('coin');detail=`<h4>${C(id).name} 판매</h4>${pr} 메소를 받았습니다.`;return;}
   const a=getLoc(from),b=getLoc(to);setLoc(from,b||null);setLoc(to,a||null);
 }
 let detail='';
 function cardDetail(id){
-  const c=CARDS[id];if(!c)return'';
+  const c=C(id);if(!c)return'';
   const rows=[`<span class="label">${TYPE_N[c.type]}${c.trigger?' · 트리거':''}${c.element?' · '+ELEM[c.element].n:''}</span>`];
   const st=[`마나 <b>${c.mana}</b>`];
   if(c.delay)st.push(`시전 지연 <b>${c.delay>0?'+':''}${c.delay.toFixed(2)}초</b>`);
   if(c.recharge)st.push(`재충전 <b>+${c.recharge}초</b>`);
   if(c.dmg)st.push(`피해 <b>${c.dmg}</b>`);
-  st.push(`판매가 <b>${Math.floor(CARD_PRICE[c.tier]/2)}</b>`);
-  return`<h4>${c.name}</h4>${rows[0]}<div>${c.desc}</div><div class="stats" style="margin-top:6px">${st.join(' ')}</div>`;
+  if(c.up)st.push(`강화 <b>+${c.up}</b>`);
+  st.push(`판매가 <b>${Math.floor(cardValue(c)/2)}</b>`);
+  const upTxt=c.up?`<div class="tagline" style="color:var(--accent)">강화 +${c.up}: 단계마다 피해 +25%, 수정자 효과 +30%, 관통·반사 +1, 마나 -12%</div>`:'';
+  return`<h4>${c.name}</h4>${rows[0]}<div>${c.desc}</div>${upTxt}<div class="stats" style="margin-top:6px">${st.join(' ')}</div>`;
 }
 function wandStats(w){return`<div class="stats"><span>시전 지연 <b>${w.delay.toFixed(2)}초</b></span><span>재충전 <b>${w.recharge.toFixed(2)}초</b></span><span>퍼짐 <b>${w.spread}°</b></span><span>슬롯 <b>${w.slots}</b></span><span>동시 시전 <b>${w.casts}</b></span></div>`;}
+function mergeRows(){
+  const cnt={};for(const c of S.bag)if(c)cnt[c]=(cnt[c]||0)+1;
+  return Object.keys(cnt).filter(k=>cnt[k]>=3&&cardUp(k)<MAX_UP).map(k=>{
+    const a=C(k),nx=C(`${cardId(k)}+${cardUp(k)+1}`),cost=mergeCost(a);
+    const fx=[a.dmg?`피해 ${a.dmg}→${nx.dmg}`:'',`마나 ${a.mana}→${nx.mana}`].filter(Boolean).join(', ');
+    return`<div class="item"><div class="card ${cardClass(a)}" style="position:relative">${a.ab}${a.up?`<span class="up">+${a.up}</span>`:''}</div>
+      <div class="grow"><div class="nm">${a.name} ×3 → <span style="color:var(--accent)">${nx.name}</span></div><div class="ds">${fx}</div></div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="price">${cost}</span><button class="btn small" data-merge="${k}" ${S.meso<cost?'disabled':''}>강화</button></div></div>`;}).join('');
+}
+function mergeCard(code){
+  const a=C(code),cost=mergeCost(a);if(S.meso<cost||cardUp(code)>=MAX_UP)return;
+  let n=0;for(let i=0;i<S.bag.length&&n<3;i++)if(S.bag[i]===code){S.bag[i]=null;n++;}
+  if(n<3)return;
+  S.meso-=cost;const nx=`${cardId(code)}+${cardUp(code)+1}`;const k=S.bag.indexOf(null);S.bag[k]=nx;
+  sfx('lvl');log(`카드 강화 성공: ${C(nx).name}`,'#ffe27a');detail=cardDetail(nx);
+}
 function openBook(){paused=true;$('book').hidden=false;renderBook();}
 function renderBook(){
   const wandsH=S.wands.map((w,i)=>{
@@ -1709,7 +1749,10 @@ function renderBook(){
       </div>
       <div class="detail" id="detail">${detail||'<h4>카드 정보</h4>카드를 누르거나 마우스를 올리면 설명이 나옵니다.<br><br><span class="label">원소 연계</span><br>빙결 + 화염 = 융해 (피해 ×2.5)<br>빙결 + 전격 = 파쇄 (피해 ×2)<br>화상 + 냉기 = 증기 폭발<br>화상 + 전격 = 과부하 폭발<br>중독 + 화염 = 독가스 폭발'}</div>
     </div>
+    <div class="row"><span class="label">카드 강화</span><span class="tagline">가방에 같은 카드 3장이 모이면 한 단계 높은 카드 1장으로 합칩니다 (최대 +${MAX_UP}).</span></div>
+    <div class="shop-list">${mergeRows()||'<div class="tagline">지금 합칠 수 있는 카드가 없습니다.</div>'}</div>
     <div class="row"><span class="label">화면 효과</span>${PIXEL_MODES.map((n,i)=>`<button class="btn small${i===pixMode?'':' ghost'}" data-pix="${i}">${n}</button>`).join('')}<span style="flex:1"></span><button class="btn ghost small" id="btn-reset">처음부터 다시 하기</button></div>`;
+  $('book-body').querySelectorAll('[data-merge]').forEach(b=>b.onclick=()=>{mergeCard(b.dataset.merge);renderBook();});
   $('book-body').querySelectorAll('[data-pix]').forEach(b=>b.onclick=()=>{setPix(+b.dataset.pix);renderBook();});
   $('book-body').querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>{S.cur=+b.dataset.equip;renderBook();});
   $('book-body').querySelectorAll('[data-drop]').forEach(b=>b.onclick=()=>{
@@ -1725,7 +1768,7 @@ $('book').addEventListener('pointerdown',e=>{
 });
 addEventListener('pointermove',e=>{
   if(!drag)return;
-  if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6&&drag.id){drag.moved=true;const c=CARDS[drag.id];ghost.innerHTML=`<div class="card ${cardClass(c)}">${c.ab}</div>`;ghost.hidden=false;}
+  if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6&&drag.id){drag.moved=true;const c=C(drag.id);ghost.innerHTML=`<div class="card ${cardClass(c)}">${c.ab}</div>`;ghost.hidden=false;}
   if(drag.moved){ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';
     document.querySelectorAll('.slot.drop').forEach(x=>x.classList.remove('drop'));const t=document.elementFromPoint(e.clientX,e.clientY);const ts=t&&t.closest&&t.closest('[data-slot]');if(ts)ts.classList.add('drop');}
 });
@@ -1806,7 +1849,7 @@ function openNpc(n){
 function renderCardShop(){
   const tier=Math.min(3,Math.floor(S.lv/5));
   if(!shopStock){shopStock=[];const pool=Object.keys(CARDS).filter(k=>CARDS[k].tier<=tier);for(let i=0;i<8;i++)shopStock.push(pick(pool));}
-  const items=shopStock.map((id,i)=>{const c=CARDS[id];if(!id)return'';const pr=CARD_PRICE[c.tier];
+  const items=shopStock.map((id,i)=>{const c=C(id);if(!id)return'';const pr=CARD_PRICE[c.tier];
     return`<div class="item"><div class="card ${cardClass(c)}" style="position:relative">${c.ab}</div><div class="grow"><div class="nm">${c.name}</div><div class="ds">${TYPE_N[c.type]} · 마나 ${c.mana} · ${c.desc}</div></div>
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="price">${pr}</span><button class="btn small" data-buy="${i}" ${S.meso<pr?'disabled':''}>구매</button></div></div>`;}).join('');
   $('shop-body').innerHTML=`<div class="dlg">어서 와요! 오늘 들어온 마법 카드예요. 레벨이 오를수록 더 강한 카드를 보여 드릴게요.</div>
@@ -1815,9 +1858,9 @@ function renderCardShop(){
       <div class="item"><div style="width:42px;display:flex;justify-content:center"><svg width="24" height="28" viewBox="0 0 24 28"><rect x="8" y="1" width="8" height="6" fill="#e8dcc4"/><circle cx="12" cy="17" r="10" fill="#e8424a"/></svg></div><div class="grow"><div class="nm">빨간 포션</div><div class="ds">HP 45% 회복 · 보유 ${S.pot.hp}</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="price">40</span><button class="btn small" data-pot="hp" ${S.meso<40?'disabled':''}>구매</button></div></div>
       <div class="item"><div style="width:42px;display:flex;justify-content:center"><svg width="24" height="28" viewBox="0 0 24 28"><rect x="8" y="1" width="8" height="6" fill="#e8dcc4"/><circle cx="12" cy="17" r="10" fill="#3f7fe8"/></svg></div><div class="grow"><div class="nm">파란 포션</div><div class="ds">MP 50% 회복 · 보유 ${S.pot.mp}</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="price">40</span><button class="btn small" data-pot="mp" ${S.meso<40?'disabled':''}>구매</button></div></div>
     </div>`;
-  $('shop-body').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const i=+b.dataset.buy,id=shopStock[i],pr=CARD_PRICE[CARDS[id].tier];
+  $('shop-body').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const i=+b.dataset.buy,id=shopStock[i],pr=CARD_PRICE[C(id).tier];
     if(S.meso<pr)return;const k=S.bag.indexOf(null);if(k<0&&S.bag.length>=30){log('카드 가방이 가득 찼습니다','#ff9a8a');return;}
-    S.meso-=pr;if(k>=0)S.bag[k]=id;else S.bag.push(id);shopStock[i]=null;sfx('buy');log(`카드 [${CARDS[id].name}] 구매`,'#bde0ff');renderCardShop();});
+    S.meso-=pr;if(k>=0)S.bag[k]=id;else S.bag.push(id);shopStock[i]=null;sfx('buy');log(`카드 [${C(id).name}] 구매`,'#bde0ff');renderCardShop();});
   $('shop-body').querySelectorAll('[data-pot]').forEach(b=>b.onclick=()=>{if(S.meso<40)return;S.meso-=40;S.pot[b.dataset.pot]++;sfx('buy');renderCardShop();});
 }
 function renderWandShop(){
@@ -1876,7 +1919,7 @@ function frame(now){
 }
 requestAnimationFrame(frame);
 // dev helper: naple.warp(2) in the console jumps to a map
-window.naple={warp:i=>{if(started)changeMap(clamp(i,0,MAPS.length-1),'L');},give:id=>{if(CARDS[id])S.bag.push(id);},wand:t=>{const w=genWand(t);S.wands.push(w);return w;},gear:(t,sl,b)=>{const it=genGear(t,sl,b);S.gear.push(it);return it;},state:()=>S};
+window.naple={warp:i=>{if(started)changeMap(clamp(i,0,MAPS.length-1),'L');},give:id=>{if(C(id))S.bag.push(id);},wand:t=>{const w=genWand(t);S.wands.push(w);return w;},gear:(t,sl,b)=>{const it=genGear(t,sl,b);S.gear.push(it);return it;},state:()=>S};
 addEventListener('beforeunload',save);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});
 })();
