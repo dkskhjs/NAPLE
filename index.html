@@ -118,6 +118,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
         <kbd>1 2 3 4</kbd><span>지팡이 교체</span>
         <kbd>I / K / Tab</kbd><span>마법서: 카드를 지팡이 슬롯에 배치</span>
         <kbd>C</kbd><span>캐릭터: 능력치(AP) 분배, 장비</span>
+        <kbd>J</kbd><span>전직 (Lv.10, Lv.30)</span>
         <kbd>Q / E</kbd><span>빨간 포션 / 파란 포션</span>
         <kbd>M</kbd><span>소리 켜기/끄기</span>
         <kbd>P</kbd><span>화면 효과 바꾸기 (도트 + 팔레트 / 도트 / 원본)</span>
@@ -496,6 +497,20 @@ function genGear(tier,slot,boost=0){
 const optText=o=>`${OPT[o.k].n} ${OPT[o.k].neg?'-':'+'}${OPT[o.k].p?pct(o.v):o.v}`;
 const gearPrice=it=>Math.round(80*(it.tier+1)*Math.pow(it.rar+1,1.5));
 const pct=v=>`${(v*100).toFixed(1).replace(/\.0$/,'')}%`;
+// ---------- job advancement: Lv.10 picks an element line, Lv.30 masters it
+const JOBS={
+  fire:{n1:'화염 마법사',n2:'불꽃의 대마도사',d1:'화염 피해 +20%, 화상 피해 +50%. 화염이 들어간 연계(융해, 독가스 폭발, 증기 폭발, 과부하) 피해 ×1.45.',d2:'화염 피해 +25% 추가, 화염 연계 피해 ×1.9. 불타는 적이 쓰러지면 폭발합니다.'},
+  ice:{n1:'냉기 마법사',n2:'서리의 대마도사',d1:'냉기 피해 +20%. 2번만 맞혀도 빙결. 냉기가 들어간 연계(융해, 증기 폭발, 파쇄) 피해 ×1.45.',d2:'냉기 피해 +25% 추가, 냉기 연계 피해 ×1.9. 빙결된 적이 받는 피해 +30%.'},
+  thunder:{n1:'전격 마법사',n2:'뇌전의 대마도사',d1:'전격 피해 +20%, 전격 투사체 연쇄 +1. 전격 연계(파쇄, 과부하) 피해 ×1.45, 과부하 범위 +40%.',d2:'전격 피해 +25% 추가, 전격 연계 피해 ×1.9. 모든 적중에 15% 확률로 연쇄 번개 2회.'},
+  poison:{n1:'독술사',n2:'역병의 대마도사',d1:'독 피해 +20%, 중독 피해 +60%. 독 연계(독가스 폭발) 피해 ×1.45.',d2:'독 피해 +25% 추가, 독 연계 피해 ×1.9. 중독된 적이 쓰러지면 독안개가 피어납니다.'},
+};
+const JOB_LV=[10,30];
+function jobTitle(){return S.job?(S.job2?JOBS[S.job].n2:JOBS[S.job].n1):'견습마법사';}
+function jobBonus(t){if(S.job)t.elem[S.job]+=.2+(S.job2?.25:0);}
+const isJob=e=>S.job===e;
+const isMaster=e=>S.job===e&&S.job2;
+const comboMul=(a,b)=>(S.job===a||S.job===b)?(S.job2?1.9:1.45):1;
+const jobPending=()=>(!S.job&&S.lv>=JOB_LV[0])||(S.job&&!S.job2&&S.lv>=JOB_LV[1]);
 const maxHP=()=>stats().maxHP;
 const maxMP=()=>stats().maxMP;
 const mpRegen=()=>stats().mpRegen;
@@ -534,6 +549,7 @@ addEventListener('keydown',e=>{
   if(e.code==='Escape'){if(open)closeAll();return;}
   if(['KeyI','KeyK','Tab'].includes(e.code)){if(open==='book')closeAll();else if(!open)openBook();return;}
   if(e.code==='KeyC'){if(open==='char')closeAll();else if(!open)openChar();return;}
+  if(e.code==='KeyJ'){if(open==='shop')closeAll();else if(!open)openJob();return;}
   if(open)return;
   if(e.code.startsWith('Digit')){const n=+e.code.slice(5)-1;if(S.wands[n]){S.cur=n;log(`${S.wands[n].name} 장착`);}}
   if(e.code==='KeyQ')usePotion('hp');
@@ -629,6 +645,7 @@ function makeProj(p,M,x,y,ang,src={}){
     elem,homing:M.homing||(perk(w,'seek')?.35:0),pierce:M.pierce+(perk(w,'pierce')?1:0),bounce:(c.bounce||0)+M.bounce,explode:Math.max(c.explode||0,M.explode),
     crit:M.crit+perk(w,'crit'),gravity:c.gravity||0,chain:c.chain||0,kind:c.kind||'shot',trigger:c.trigger||null,payload:p.payload,fired:false,hit:new Set(),tick:0,dead:false};
   if(M.element==='thunder'&&!o.chain)o.chain=1;
+  if(elem==='thunder'&&isJob('thunder'))o.chain+=1;
   if(o.kind==='meteor'){
     const dir=Math.cos(ang)>=0?1:-1;const tx=x+Math.cos(ang)*240;
     o.x=tx-dir*140;o.y=-30;const dx=tx-o.x,dy=GROUND-o.y,l=Math.hypot(dx,dy);o.vx=dx/l*sp;o.vy=dy/l*sp;o.pierce=99;
@@ -666,27 +683,29 @@ function hitMob(m,base,elem,crit,dirX,o){
   let dmg=base*dmgMul()*rand(.85,1.15);
   const st=stats(),isCrit=Math.random()<st.crit+(crit||0);if(isCrit)dmg*=st.critDmg;
   const cy=m.y-m.h/2;
+  if(isMaster('ice')&&m.frozen>0)dmg*=1.3;
   switch(elem){
     case'fire':
-      if(m.frozen>0){m.frozen=0;dmg*=2.5;combo(m,'융해!');burst(m.x,cy,'#bff4ff',18);}
-      else if(m.poison>0){m.poison=0;combo(m,'독가스 폭발!');explosion(m.x,cy,85,base*1.2,'#c38bff');}
-      else{m.burn=3;m.burnDps=Math.max(m.burnDps||0,base*.35);}
+      if(m.frozen>0){m.frozen=0;dmg*=2.5*comboMul('fire','ice');combo(m,'융해!');burst(m.x,cy,'#bff4ff',18);}
+      else if(m.poison>0){m.poison=0;combo(m,'독가스 폭발!');explosion(m.x,cy,85,base*1.2*comboMul('fire','poison'),'#c38bff');}
+      else{m.burn=3;m.burnDps=Math.max(m.burnDps||0,base*.35*(isJob('fire')?1.5:1));}
       break;
     case'ice':
-      if(m.burn>0){m.burn=0;combo(m,'증기 폭발!');explosion(m.x,cy,60,base*1.2,'#e8f6ff');}
-      else{m.chill=3;m.chillN=(m.chillN||0)+1;if(m.chillN>=3&&!m.frozen){m.frozen=m.boss?1:2.2;m.chillN=0;combo(m,'빙결');}}
+      if(m.burn>0){m.burn=0;combo(m,'증기 폭발!');explosion(m.x,cy,60,base*1.2*comboMul('ice','fire'),'#e8f6ff');}
+      else{m.chill=3;m.chillN=(m.chillN||0)+1;if(m.chillN>=(isJob('ice')?2:3)&&!m.frozen){m.frozen=m.boss?1:2.2;m.chillN=0;combo(m,'빙결');}}
       break;
     case'thunder':
-      if(m.frozen>0){m.frozen=0;dmg*=2;combo(m,'파쇄!');burst(m.x,cy,'#bff4ff',22);}
-      else if(m.burn>0){m.burn=0;combo(m,'과부하!');explosion(m.x,cy,70,base,'#fff27a');}
+      if(m.frozen>0){m.frozen=0;dmg*=2*comboMul('thunder','ice');combo(m,'파쇄!');burst(m.x,cy,'#bff4ff',22);}
+      else if(m.burn>0){m.burn=0;combo(m,'과부하!');explosion(m.x,cy,70*(isJob('thunder')?1.4:1),base*comboMul('thunder','fire'),'#fff27a');}
       m.shock=m.boss?.1:.35;
       break;
-    case'poison':m.poison=4;m.poisonDps=Math.max(m.poisonDps||0,base*.6);break;
+    case'poison':m.poison=4;m.poisonDps=Math.max(m.poisonDps||0,base*.6*(isJob('poison')?1.6:1));break;
   }
   damageMob(m,dmg,isCrit);
   if(dirX)m.kb+=Math.sign(dirX)*(m.boss?.2:2.6);
   m.aggro=6;
   if(o&&o.chain>0)chain(m,o.chain,base*.65,new Set([m]));
+  if(o&&isMaster('thunder')&&Math.random()<.15)chain(m,2,base*.5,new Set([m]));
 }
 function chain(from,n,dmg,seen){
   let cur=from;
@@ -710,6 +729,8 @@ function burst(x,y,c,n){for(let i=0;i<n;i++){const a=rand(Math.PI*2),s=rand(1,4.
 function killMob(m){
   m.dead=true;m.fade=.6;
   const T=MOBS[m.type];gainExp(T.exp);
+  if(isMaster('fire')&&m.burn>0)explosion(m.x,m.y-m.h/2,80,12+S.lv*1.5,'#ff7a2f');
+  if(isMaster('poison')&&m.poison>0)makeProj({id:'poison',payload:null},newMods(),m.x-50,m.y-20,0,{});
   const n=m.boss?14:1;for(let i=0;i<n;i++)dropItem('meso',m.x+rand(-30,30),m.y-20,irand(T.meso[0],T.meso[1]));
   const tier=MAP.tier||0;
   if(m.boss){
@@ -735,7 +756,9 @@ function gainExp(n){
   S.exp+=n;
   while(S.exp>=needExp(S.lv)){S.exp-=needExp(S.lv);S.lv++;S.apFree+=AP_PER_LV;dirty();S.hp=maxHP();S.mp=maxMP();
     texts.push({x:player.x,y:player.y-80,txt:'LEVEL UP!',t:0,c:'#ffcf4a',big:true,lvl:true});
-    fx.push({type:'ring',x:player.x,y:player.y-30,t:0});sfx('lvl');log(`레벨 ${S.lv} 달성! AP ${AP_PER_LV}를 얻었습니다. C 키로 분배하세요.`,'#ffcf4a');save();}
+    fx.push({type:'ring',x:player.x,y:player.y-30,t:0});sfx('lvl');log(`레벨 ${S.lv} 달성! AP ${AP_PER_LV}를 얻었습니다. C 키로 분배하세요.`,'#ffcf4a');
+    if(JOB_LV.includes(S.lv)&&jobPending()){banner={t:3,txt:'전직 가능!',sub:'J 키를 누르거나 안내원 피오에게 말을 거세요'};log('전직할 수 있습니다! J 키 또는 안내원 피오','#ff9ad8');}
+    save();}
 }
 function usePotion(k){
   if(S.pot[k]<=0){log(k==='hp'?'빨간 포션이 없습니다':'파란 포션이 없습니다','#ff9a8a');return;}
@@ -1637,6 +1660,7 @@ function drawHUD(){
   const by=H-50;g.fillStyle='rgba(12,15,32,.9)';g.fillRect(0,by,W,50);g.fillStyle='#c9a24a';g.fillRect(0,by,W,1.5);
   txt('Lv.',14,by+17,13,'#ffe27a',null,'left');txt(String(S.lv),38,by+18,26,'#ffcf4a','#3a2508','left',4);
   txt(jobName(),14,by+34,11,'#a8aecd',null,'left');
+  if(jobPending()){g.font=`11px ${FONT}`;const jx=20+g.measureText(jobName()).width;g.fillStyle='#ff9ad8';rr(jx,by+27,34,13,4);g.fill();txt('전직 J',jx+17,by+34,9,'#2a0a20');}
   if(S.apFree>0){g.font=`26px ${FONT}`;const ax=Math.min(70,42+g.measureText(String(S.lv)).width);g.fillStyle='#ffcf4a';rr(ax,by+4,24,13,4);g.fill();txt('AP',ax+12,by+11,10,'#2a1d05');}
   bar2(96,by+7,300,'HP',S.hp,maxHP(),'#ff5a5a','#b02a2a');
   bar2(96,by+24,300,'MP',S.mp,maxMP(),'#5aa8ff','#2a58b0');
@@ -1834,6 +1858,7 @@ function renderChar(){
         <span>마나 소모 <b>×${st.manaMul.toFixed(2)}</b> · 시전 지연 <b>×${st.delayMul.toFixed(2)}</b></span>
         <span>이동 속도 <b>×${st.speed.toFixed(2)}</b></span>${el}</div></div>
     </div>
+    <div class="tagline">${S.job?`${jobTitle()}: ${JOBS[S.job].d1}${S.job2?' '+JOBS[S.job].d2:''}`:`Lv.${JOB_LV[0]}에 전직할 수 있습니다 (J 키).`}</div>
     <div id="char-extra" style="display:flex;flex-direction:column;gap:14px"></div>`;
   $('char-body').querySelectorAll('[data-ap]').forEach(b=>b.onclick=()=>{const n=Math.min(+b.dataset.n,S.apFree);if(n<1)return;S.ap[b.dataset.ap]+=n;S.apFree-=n;dirty();renderChar();});
   const rb=$('ap-reset');rb.onclick=()=>{if(!rb.dataset.confirm){rb.dataset.confirm=1;rb.textContent='한 번 더 누르면 초기화';return;}
@@ -1844,7 +1869,7 @@ function renderChar(){
 // shops & npc
 function openNpc(n){
   paused=true;$('shop').hidden=false;$('shop-title').textContent=n.name;
-  if(n.kind==='cards')renderCardShop();else if(n.kind==='wands')renderWandShop();else renderGuide(0);
+  if(n.kind==='cards')renderCardShop();else if(n.kind==='wands')renderWandShop();else if(jobPending())renderJob();else renderGuide(0);
 }
 function renderCardShop(){
   const tier=Math.min(3,Math.floor(S.lv/5));
@@ -1887,8 +1912,34 @@ const GUIDE=[
   '<em>멀티캐스트</em>(금색 테두리)는 다음 카드 여러 장을 한 번에 쏘게 해요. [더블 캐스트][파이어 애로우][아이스 샤드]처럼 써 보세요.',
   '<em>트리거</em>(보라 테두리)는 맞힌 자리에서 다음 카드를 시전해요. [트리거 볼트][부채꼴 캐스트][스파크][스파크][스파크]는 적중 지점에서 불꽃이 퍼져요.',
   '원소를 섞으면 연계가 일어나요. 얼린 적에게 <em>화염</em>을 맞히면 융해, <em>전격</em>을 맞히면 파쇄! 불타는 적에게 냉기나 전격을 맞히면 폭발해요.',
+  'Lv.10이 되면 <em>전직</em>할 수 있어요. 화염, 냉기, 전격, 독 중 하나를 골라 그 원소와 연계를 강화하고, Lv.30에는 대마도사가 됩니다. 장비와 AP는 <em>C 키</em>, 전직은 <em>J 키</em>예요.',
   '오른쪽 포털로 나가면 사냥터예요. 초록 들판, 깊은 숲, 노을 사막, 얼음 유적을 지나면 강철 게 킹이 기다리고 있어요. 행운을 빌어요!',
 ];
+function openJob(){paused=true;$('shop').hidden=false;renderJob();}
+function renderJob(){
+  $('shop-title').textContent='전직';
+  let body;
+  if(!S.job){
+    body=S.lv<JOB_LV[0]?`<div class="dlg">Lv.${JOB_LV[0]}이 되면 원소 계열 하나를 골라 전직할 수 있어요. 고른 계열은 바꿀 수 없습니다.</div>`:
+      `<div class="dlg">원소 계열 하나를 고르세요. 고른 계열은 바꿀 수 없고, Lv.${JOB_LV[1]}에 같은 계열의 대마도사로 2차 전직합니다.</div>`;
+    body+=`<div class="shop-list">${ELEMS.map(e=>`<div class="item" style="align-items:flex-start"><span class="card" style="background:${ELEM[e].c}33;border-color:${ELEM[e].c};flex:none">${ELEM[e].n[0]}</span>
+      <div class="grow"><div class="nm" style="color:${ELEM[e].c}">${JOBS[e].n1}</div><div class="ds">${JOBS[e].d1}</div><div class="ds" style="margin-top:4px">2차: ${JOBS[e].n2} · ${JOBS[e].d2}</div>
+      ${S.lv>=JOB_LV[0]?`<button class="btn small" style="margin-top:6px" data-job="${e}">${JOBS[e].n1}로 전직</button>`:''}</div></div>`).join('')}</div>`;
+  } else {
+    const J=JOBS[S.job];
+    body=`<div class="dlg">현재 직업: <em>${jobTitle()}</em><br>${J.d1}${S.job2?'<br>'+J.d2:''}</div>`;
+    if(!S.job2)body+=S.lv>=JOB_LV[1]?`<div class="item"><div class="grow"><div class="nm" style="color:${ELEM[S.job].c}">${J.n2}</div><div class="ds">${J.d2}</div></div><button class="btn small" data-job2>2차 전직</button></div>`
+      :`<div class="tagline">Lv.${JOB_LV[1]}에 ${J.n2}로 2차 전직할 수 있습니다: ${J.d2}</div>`;
+  }
+  $('shop-body').innerHTML=body;
+  $('shop-body').querySelectorAll('[data-job]').forEach(b=>b.onclick=()=>{
+    if(!b.dataset.confirm){$('shop-body').querySelectorAll('[data-job]').forEach(x=>{delete x.dataset.confirm;x.textContent=`${JOBS[x.dataset.job].n1}로 전직`;});b.dataset.confirm=1;b.textContent='한 번 더 누르면 확정';return;}
+    S.job=b.dataset.job;dirty();jobDone(JOBS[S.job].n1);});
+  const b2=$('shop-body').querySelector('[data-job2]');if(b2)b2.onclick=()=>{S.job2=true;dirty();jobDone(JOBS[S.job].n2);};
+}
+function jobDone(name){
+  sfx('lvl');fx.push({type:'ring',x:player.x,y:player.y-30,t:0});banner={t:3,txt:name,sub:'전직을 축하합니다'};log(`${name}(으)로 전직했습니다!`,'#ff9ad8');save();closeAll();
+}
 function renderGuide(i){
   $('shop-body').innerHTML=`<div class="dlg">${GUIDE[i]}</div><div class="row"><span class="label">${i+1} / ${GUIDE.length}</span><span style="flex:1"></span>
     ${i>0?'<button class="btn ghost small" data-g="-1">이전</button>':''}${i<GUIDE.length-1?'<button class="btn small" data-g="1">다음</button>':'<button class="btn small" data-close2>고마워요</button>'}</div>`;
